@@ -1,0 +1,288 @@
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(readr)
+library(dplyr)
+library(tidyr)
+```
+
+
+```{r, include=FALSE}
+# Read datasets (variables from prepossessing folder)
+pop_nsw_2021 <- read.csv("pop_size_nsw_2021.csv")
+cont_seltd_heal_cons_nsw_2021 <- read.csv("cont_seltd_heal_cons_nsw_2021.csv")
+ty_heal_cons_nsw_2021 <- read.csv("ty_heal_cons_nsw_2021.csv")
+whether_arthritis_nsw_2021 <- read.csv("whether_arthritis_nsw_2021.csv")
+whether_asthma_nsw_2021 <- read.csv("whether_asthma_nsw_2021.csv")
+whether_cancer_nsw_2021 <- read.csv("whether_cancer_nsw_2021.csv")
+whether_dementia_nsw_2021 <- read.csv("whether_dementia_nsw_2021.csv")
+whether_diabetes_nsw_2021 <- read.csv("whether_diabetes_nsw_2021.csv")
+whether_heart_disease_nsw_2021 <- read.csv("whether_heart_disease_nsw_2021.csv")
+whether_kidney_disease_nsw_2021 <- read.csv("whether_kidney_disease_nsw_2021.csv")
+whether_lung_condition_nsw_2021 <- read.csv("whether_lung_condition_nsw_2021.csv")
+whether_mental_health_nsw_2021 <- read.csv("whether_mental_health_nsw_2021.csv")
+whether_stroke_nsw_2021 <- read.csv("whether_stroke_nsw_2021.csv")
+sa2_wslhd_2021 <- read.csv("wslhd_sa2_2021.csv")
+```
+
+```{r}
+# Read column names
+names(cont_seltd_heal_cons_nsw_2021)
+names(ty_heal_cons_nsw_2021)
+names(whether_arthritis_nsw_2021)
+names(whether_asthma_nsw_2021)
+names(whether_cancer_nsw_2021)
+names(whether_dementia_nsw_2021)
+names(whether_diabetes_nsw_2021)
+names(whether_heart_disease_nsw_2021)
+names(whether_kidney_disease_nsw_2021)
+names(whether_lung_condition_nsw_2021)
+names(whether_mental_health_nsw_2021)
+names(whether_stroke_nsw_2021)
+```
+
+```{r}
+# Unify format
+cont_seltd_heal_cons_nsw_2021 <- cont_seltd_heal_cons_nsw_2021 %>%
+  rename(
+    none_con = `None.of.the.selected.conditions`,
+    one_con = `One.condition`,
+    two_cons = `Two.conditions`,
+    three_plus_cons = `Three.or.more.conditions`,
+    not_stated_cont_cons = `Not.stated`
+  )
+
+
+ty_heal_cons_nsw_2021 <- ty_heal_cons_nsw_2021 %>%
+  rename(
+    arthritis = Arthritis,
+    asthma = Asthma,
+    cancer = `Cancer..including.remission.`,
+    dementia = `Dementia..including.Alzheimer.s.`,
+    diabetes = `Diabetes..excluding.gestational.diabetes.`,
+    heart_disease = `Heart.disease..including.heart.attack.or.angina.`,
+    kidney_disease = `Kidney.disease`,
+    lung_condition = `Lung.condition..including.COPD.or.emphysema.`,
+    mental_health = `Mental.health.condition..including.depression.or.anxiety.`,
+    stroke = Stroke,
+    other_long_term = `Any.other.long.term.health.condition.s.`,
+    none_long_term = `No.long.term.health.condition.s.`,
+    not_stated_type_cons = `Not.stated`
+  )
+
+
+whether_arthritis_nsw_2021 <- whether_arthritis_nsw_2021 %>%
+  rename(
+    yes_arthritis = Has.arthritis,
+    no_arthritis = Does.not.have.arthritis,
+    not_stated_arthritis = `Not.stated`
+  )
+
+
+whether_asthma_nsw_2021 <- whether_asthma_nsw_2021 %>%
+  rename(
+    yes_asthma = Has.asthma,
+    no_asthma = Does.not.have.asthma,
+    not_stated_asthma = `Not.stated`
+  )
+
+
+whether_cancer_nsw_2021 <- whether_cancer_nsw_2021 %>%
+  rename(
+    yes_cancer = `Has.cancer..including.remission.`,
+    no_cancer = `Does.not.have.cancer..including.remission.`,
+    not_stated_cancer = `Not.stated`
+  )
+
+whether_dementia_nsw_2021 <- whether_dementia_nsw_2021 %>%
+  rename(
+    yes_dementia = `Has.dementia..including.Alzheimer.s.`,
+    no_dementia = `Does.not.have.dementia..including.Alzheimer.s.`,
+    not_stated_dementia = `Not.stated`
+  )
+
+whether_diabetes_nsw_2021 <- whether_diabetes_nsw_2021 %>%
+  rename(
+    yes_diabetes = `Has.diabetes..excluding.gestational.diabetes.`,
+    no_diabetes = `Does.not.have.diabetes..excluding.gestational.diabetes.`,
+    not_stated_diabetes = `Not.stated`
+  )
+
+whether_heart_disease_nsw_2021 <- whether_heart_disease_nsw_2021 %>%
+  rename(
+    yes_heart_disease = `Has.heart.disease..including.heart.attack.or.angina.`,
+    no_heart_disease = `Does.not.have.heart.disease..including.heart.attack.or.angina.`,
+    not_stated_heart_disease = `Not.stated`
+  )
+
+whether_kidney_disease_nsw_2021 <- whether_kidney_disease_nsw_2021 %>%
+  rename(
+    yes_kidney_disease = Has.kidney.disease,
+    no_kidney_disease = Does.not.have.kidney.disease,
+    not_stated_kidney_disease = `Not.stated`
+  )
+
+whether_lung_condition_nsw_2021 <- whether_lung_condition_nsw_2021 %>%
+  rename(
+    yes_lung_condition = `Has.a.lung.condition..including.COPD.and.emphysema.`,
+    no_lung_condition = `Does.not.have.a.lung.condition..including.COPD.and.emphysema.`,
+    not_stated_lung_condition = `Not.stated`
+  )
+
+whether_mental_health_nsw_2021 <- whether_mental_health_nsw_2021 %>%
+  rename(
+    yes_mental_health = `Has.a.mental.health.condition..including.depression.or.anxiety.`,
+    no_mental_health = `Does.not.have.a.mental.health.condition..including.depression.or.anxiety.`,
+    not_stated_mental_health = `Not.stated`
+  )
+
+whether_stroke_nsw_2021 <- whether_stroke_nsw_2021 %>%
+  rename(
+    yes_stroke = Has.had.a.stroke,
+    no_stroke = Has.not.had.a.stroke,
+    not_stated_stroke = `Not.stated`
+  )
+
+```
+
+```{r}
+# Join variables into pop_nsw datasets
+pop_nsw_2021 <- pop_nsw_2021 %>%
+  rename(sa2 = "sa2_name_2021") %>%
+  left_join(cont_seltd_heal_cons_nsw_2021, by = "sa2") %>%
+  left_join(ty_heal_cons_nsw_2021, by = "sa2") %>%
+  left_join(whether_arthritis_nsw_2021, by = "sa2") %>%
+  left_join(whether_asthma_nsw_2021, by = "sa2") %>%
+  left_join(whether_cancer_nsw_2021, by = "sa2") %>%
+  left_join(whether_dementia_nsw_2021, by = "sa2") %>%
+  left_join(whether_diabetes_nsw_2021, by = "sa2") %>%
+  left_join(whether_heart_disease_nsw_2021, by = "sa2") %>%
+  left_join(whether_kidney_disease_nsw_2021, by = "sa2") %>%
+  left_join(whether_lung_condition_nsw_2021, by = "sa2") %>%
+  left_join(whether_mental_health_nsw_2021, by = "sa2") %>%
+  left_join(whether_stroke_nsw_2021, by = "sa2")
+```
+
+```{r}
+health_conditions_nsw_2021 <- pop_nsw_2021 %>%
+  mutate(
+    # Collapse count selected long term health conditions
+    two_plus_cons = rowSums(across(c(two_cons, three_plus_cons)), na.rm = TRUE)
+  )
+```
+
+```{r}
+health_conditions_nsw_2021 <- health_conditions_nsw_2021 %>%
+  mutate(
+    # Calculate proportions (count selected long term health conditions)
+    prop_none_con = if_else(pop_size > 0, none_con / pop_size, NA_real_),
+    prop_one_con = if_else(pop_size > 0, one_con / pop_size, NA_real_),
+    prop_two_plus_cons = if_else(pop_size > 0, two_plus_cons / pop_size, NA_real_),
+
+    # Calculate proportions (type of selected long term health conditions)
+    prop_arthritis = if_else(pop_size > 0, arthritis / pop_size, NA_real_),
+    prop_asthma = if_else(pop_size > 0, asthma / pop_size, NA_real_),
+    prop_cancer = if_else(pop_size > 0, cancer / pop_size, NA_real_),
+    prop_dementia = if_else(pop_size > 0, dementia / pop_size, NA_real_),
+    prop_diabetes = if_else(pop_size > 0, diabetes / pop_size, NA_real_),
+    prop_heart_disease = if_else(pop_size > 0, heart_disease / pop_size, NA_real_),
+    prop_kidney_disease = if_else(pop_size > 0, kidney_disease / pop_size, NA_real_),
+    prop_lung_condition = if_else(pop_size > 0, lung_condition / pop_size, NA_real_),
+    prop_mental_health = if_else(pop_size > 0, mental_health / pop_size, NA_real_),
+    prop_stroke = if_else(pop_size > 0, stroke / pop_size, NA_real_),
+    
+    # Calculate proportions (whether has arthritis)
+    prop_yes_arthritis = if_else(pop_size > 0, yes_arthritis / pop_size, NA_real_),
+    prop_no_arthritis = if_else(pop_size > 0, no_arthritis / pop_size, NA_real_),
+    
+    # Calculate proportions (whether has asthma)
+    prop_yes_asthma = if_else(pop_size > 0, yes_asthma / pop_size, NA_real_),
+    prop_no_asthma = if_else(pop_size > 0, no_asthma / pop_size, NA_real_),
+    
+    # Calculate proportions (whether has cancer)
+    prop_yes_cancer = if_else(pop_size > 0, yes_cancer / pop_size, NA_real_),
+    prop_no_cancer = if_else(pop_size > 0, no_cancer / pop_size, NA_real_),
+    
+    # Calculate proportions (whether has dementia)
+    prop_yes_dementia = if_else(pop_size > 0, yes_dementia / pop_size, NA_real_),
+    prop_no_dementia = if_else(pop_size > 0, no_dementia / pop_size, NA_real_),
+    
+    # Calculate proportions (whether has diabetes)
+    prop_yes_diabetes = if_else(pop_size > 0, yes_diabetes / pop_size, NA_real_),
+    prop_no_diabetes = if_else(pop_size > 0, no_diabetes / pop_size, NA_real_),
+    
+    # Calculate proportions (whether has heart disease)
+    prop_yes_heart_disease = if_else(pop_size > 0, yes_heart_disease / pop_size, NA_real_),
+    prop_no_heart_disease = if_else(pop_size > 0, no_heart_disease / pop_size, NA_real_),
+    
+    # Calculate proportions (whether has kidney disease)
+    prop_yes_kidney_disease = if_else(pop_size > 0, yes_kidney_disease / pop_size, NA_real_),
+    prop_no_kidney_disease = if_else(pop_size > 0, no_kidney_disease / pop_size, NA_real_),
+    
+    # Calculate proportions (whether has lung condition)
+    prop_yes_lung_condition = if_else(pop_size > 0, yes_lung_condition / pop_size, NA_real_),
+    prop_no_lung_condition = if_else(pop_size > 0, no_lung_condition / pop_size, NA_real_),
+    
+    # Calculate proportions (whether has mental health condition)
+    prop_yes_mental_health = if_else(pop_size > 0, yes_mental_health / pop_size, NA_real_),
+    prop_no_mental_health = if_else(pop_size > 0, no_mental_health / pop_size, NA_real_),
+    
+    # Calculate proportions (whether had stroke)
+    prop_yes_stroke = if_else(pop_size > 0, yes_stroke / pop_size, NA_real_),
+    prop_no_stroke = if_else(pop_size > 0, no_stroke / pop_size, NA_real_)
+  )
+```
+
+```{r}
+# Retain key variables
+health_conditions_nsw_2021 <- health_conditions_nsw_2021 %>%
+  select(
+    sa2, in_wslhd, in_metro, pop_size,
+    
+    # Count selected conditions
+    none_con, one_con, two_plus_cons,
+    
+    # Type of conditions
+    arthritis, asthma, cancer, dementia, diabetes,
+    heart_disease, kidney_disease, lung_condition, mental_health, stroke,
+    
+    # Whether has condition
+    yes_arthritis, no_arthritis,
+    yes_asthma, no_asthma,
+    yes_cancer, no_cancer,
+    yes_dementia, no_dementia,
+    yes_diabetes, no_diabetes,
+    yes_heart_disease, no_heart_disease,
+    yes_kidney_disease, no_kidney_disease,
+    yes_lung_condition, no_lung_condition,
+    yes_mental_health, no_mental_health,
+    yes_stroke, no_stroke,
+    
+    # Proportions (selected conditions)
+    prop_none_con, prop_one_con, prop_two_plus_cons,
+    
+    # Proportions (type of conditions)
+    prop_arthritis, prop_asthma, prop_cancer, prop_dementia, prop_diabetes,
+    prop_heart_disease, prop_kidney_disease, prop_lung_condition, prop_mental_health, prop_stroke,
+    
+    # Proportions (whether has condition)
+    prop_yes_arthritis, prop_no_arthritis,
+    prop_yes_asthma, prop_no_asthma,
+    prop_yes_cancer, prop_no_cancer,
+    prop_yes_dementia, prop_no_dementia,
+    prop_yes_diabetes, prop_no_diabetes,
+    prop_yes_heart_disease, prop_no_heart_disease,
+    prop_yes_kidney_disease, prop_no_kidney_disease,
+    prop_yes_lung_condition, prop_no_lung_condition,
+    prop_yes_mental_health, prop_no_mental_health,
+    prop_yes_stroke, prop_no_stroke
+  ) %>%
+  
+    rename(sa2_name_2021 = "sa2")
+
+# write_csv(health_conditions_nsw_2021, "health_conditions_nsw_2021.csv")
+```
+
