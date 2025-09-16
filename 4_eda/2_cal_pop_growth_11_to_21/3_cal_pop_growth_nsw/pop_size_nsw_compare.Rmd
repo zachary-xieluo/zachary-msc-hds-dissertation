@@ -1,0 +1,89 @@
+---
+Description: Calculate population growth by SA2 from 2011 to 2021.
+
+Approach: 
+
+1. Read NSW SA2 populations for 2011 and 2021 and the 2011→2021 mapping with `weight_norm_from_2011`
+
+2. Build a pair-level table (2011 SA2 → 2021 SA2 ) and compute the contributed 2011 to 2021:
+   
+   - `contrib_2011_to_2021 = pop_2011 × weight_norm_from_2011`
+
+3. Aggregate by 2021 SA2 to get `pop2011_as21` = 2011 population reprojected to 2021 boundaries.
+
+4. Join with 2021 population to compute:  
+   - `abs_change = pop_2021 − pop2011_as21`
+   - `growth_rate = (pop_2021 / pop2011_as21) − 1.
+  
+author: "Zachary Xie"
+date: "2025-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(readr)
+library(stringr)
+library(tidyr)
+library(ggplot2)
+library(scales)
+```
+
+```{r}
+# Read the datasets
+nsw_sa2_mapping <- read_csv("nsw_map_list_from_2011.csv") %>%
+  mutate(across(where(is.character), str_squish)) %>%
+  select(sa2_name_2011, sa2_name_2021, weight_norm_from_2011,
+         lga_name_2021, nsw_lhd_name)
+
+pop_nsw_2011 <- read_csv("pop_size_nsw_2011.csv") %>%
+  transmute(sa2_name_2011 = str_squish(sa2_name_2011), 
+            pop_2011 = as.numeric(pop_size))
+
+pop_nsw_2021 <- read_csv("pop_size_nsw_2021.csv") %>%
+  transmute(sa2_name_2021 = str_squish(sa2_name_2021), 
+            pop_2021 = as.numeric(pop_size),
+            in_wslhd_2021 = as.numeric(in_wslhd),
+            in_metro_2021 = as.numeric(in_metro))
+```
+
+```{r}
+# --- pair-level table: includes BOTH years' SA2 + populations ---
+pairs_11to21 <- nsw_sa2_mapping %>%                     
+  left_join(pop_nsw_2011, by = "sa2_name_2011") %>%
+  left_join(pop_nsw_2021, by = "sa2_name_2021") %>%
+  mutate(
+    pop_2011 = coalesce(pop_2011, 0),
+    pop_2021 = coalesce(pop_2021, 0),
+    contrib_2011_to_2021 = pop_2011 * weight_norm_from_2011 
+  ) %>%
+  select(sa2_name_2011, pop_2011,
+         sa2_name_2021, pop_2021,
+         weight_norm_from_2011, contrib_2011_to_2021)
+
+# --- optional 2021-level summary using the pair-level table ---
+pop11_as_21 <- pairs_11to21 %>%
+  group_by(sa2_name_2021) %>%
+  summarise(pop2011_as21 = sum(contrib_2011_to_2021, na.rm = TRUE), .groups = "drop")
+
+pop_nsw_11_21 <- pop_nsw_2021 %>%
+  left_join(pop11_as_21, by = "sa2_name_2021") %>%
+  mutate(
+    pop2011_as21 = replace_na(pop2011_as21, 0),
+    abs_change   = pop_2021 - pop2011_as21,
+    growth_rate   = if_else(pop2011_as21 > 0, abs_change / pop2011_as21, NA_real_)
+  )
+
+pop_wslhd_11_21 <- pop_nsw_11_21 %>%
+  filter(in_wslhd_2021 == 1)
+```
+
+```{r}
+# write.csv(pop_nsw_11_21, "pop_size_nsw_compare.csv", row.names = FALSE)
+```
+
+
