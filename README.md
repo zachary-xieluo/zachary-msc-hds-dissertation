@@ -31,5 +31,14 @@ zachary-msc-hds-dissertation/
 │ │ └─ 5_cal_pop_growth_metro/      
 │ │ 
 │ ├─ 3_cultural_diversity           # Updated on 16 Sep
+│ 
+└─ 5_scroller_intro/                # Updated on 29 Sep     
+│ │ 
+│ ├─ data/                          # Processed data that is used for developing scrollytelling
+│ ├─ images/                        # Images that are loaded in scrollytelling
+│ ├─ create_map.qmd                 # Scripts to create map images
+│ ├─ create_pop_figure.qmd          # Scripts to create the figures for population size
+│ ├─ index.qmd                      # Scripts to develop scrollytelling format
+│ ├─ index.html                     # Scrollytelling presentation
 
 ```

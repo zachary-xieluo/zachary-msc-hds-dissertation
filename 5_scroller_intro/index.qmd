@@ -1,0 +1,303 @@
+---
+title: "People and Communities in Western Sydney"
+pagetitle: Story
+format:
+  closeread-html:
+    toc: false
+cr-style:
+  narrative-background-color-overlay: "rgba(49,74,67,0.7)" 
+  narrative-text-color-overlay: "#f8fafc"
+  narrative-background-color-sidebar: "#ffffff"
+  narrative-text-color-sidebar: "#000000"
+  section-background-color: "#ffffff"
+  narrative-overlay-max-width: "700px"
+  narrative-sidebar-width: "800px"
+  narrative-font-size: 1.8rem
+title-block-banner: false
+---
+
+```{=html}
+<style>
+
+.quarto-title-block {
+  margin-top: clamp(4rem, 10vh, 10rem) !important;
+  margin-bottom: clamp(2rem, 8vh, 8rem) !important;
+  text-align: center !important;
+}
+
+/* metro-map-2 */
+#cr-metro-map-2{
+  position: relative;
+  --x: 58%;
+  --y: 45%;
+  --r: 580px;
+  --feather: 120px;
+  --dim: rgba(30,41,59,.55);
+}
+
+/* metro-map-3 */
+#cr-metro-map-3{
+  --x: 63%;
+  --y: 39%;
+  --r: 220px;
+  --feather: 90px;
+  --dim: rgba(30,41,59,.55);
+}
+
+/* wslhd-map-7 */
+#cr-wslhd-map-7{
+  --x: 50%;
+  --y: 70%;
+  --r: 300px;
+  --feather: 90px;
+  --dim: rgba(30,41,59,.55);
+}
+
+#cr-metro-map-2, #cr-metro-map-3,  #cr-wslhd-map-7 {
+  position: relative;
+}
+
+#cr-metro-map-2 img, #cr-metro-map-3 img, #cr-wslhd-map-7 img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+#cr-metro-map-2::after, #cr-metro-map-3::after, #cr-wslhd-map-7::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background:
+    radial-gradient(
+      circle at var(--x) var(--y),
+      transparent 0,
+      transparent calc(var(--r) - var(--feather)),
+      rgba(0,0,0,.20) calc(var(--r) - var(--feather) + 1px),
+      var(--dim) var(--r)
+    );
+}
+
+</style>
+```
+
+::: {style="font-size:1.4rem; line-height:1.5; margin:0 auto;"}
+In this document, we will take you through the demographic, socioeconomic, and health profiles of communities in Western Sydney from 2011 to 2021.
+:::
+
+<br>
+
+![](images/wslhd_cover_map.png){width=100%}
+
+<br>
+
+::: {style="font-size:2.0rem; line-height:1.5;"}
+**Acknowledgement**
+:::
+
+::: {style="font-size:1.4rem; line-height:1.5; margin:0 auto;"}
+We acknowledge the Traditional Custodians of the lands on which the communities of WSLHD live, gather, and work.
+
+We pay our deepest respects to Elders past and present, who have cared for this Country for countless generations and continue to uphold cultural knowledge, identity, and connection to land.
+
+We also extend this respect to all Aboriginal and Torres Strait Islander peoples who engage with this work, and recognise their enduring contributions to community health, wellbeing, and cultural heritage.
+:::
+
+<br>
+
+::: {style="font-size:2.0rem; line-height:1.5;"}
+**Data Sources**
+:::
+
+::: {style="font-size:1.4rem; line-height:1.5; margin:0 auto;"}
+The analysis is based on Census data from 2011 and 2021, accessed through the Australian Bureau of Statistics (ABS) TableBuilder.
+:::
+
+<br>
+
+::::::::{.cr-section layout="overlay-left"}
+
+To start with the analysis, let’s begin with a brief introduction to WSLHD. @cr-metro-map-1
+
+This is a partial map of New South Wales, Australia. @cr-metro-map-1
+
+:::{#cr-metro-map-1}
+![](images/metro_map_1.png){style="width:100%; height:100%; object-fit:contain; border-radius:0"}
+:::
+
+:::{focus-on="cr-metro-map-2"}
+
+Let’s turn our attention to the areas outlined in purple. These represent the 6 [**NSW Metropolitan Local Health Districts**]{style="color: #A56ACF;"}:
+
+- Nepean Blue Mountains
+- Northern Sydney
+- South Eastern Sydney
+- South Western Sydney
+- Sydney
+- Western Sydney
+
+:::
+
+These 6 LHDs form the healthcare network of metropolitan NSW, providing health services to the people living in this region. @cr-metro-map-2
+
+:::{#cr-metro-map-2 .viz}
+![](images/metro_map_2.png){style="width:100%; height:100%; object-fit:contain; border-radius:0"}
+:::
+
+The orange area represents [**WSLHD**]{style="color: #F59E0B;"}, recognised as a leader in clinical care, research, and education across Western Sydney. @cr-metro-map-3
+
+Let’s take a closer look at the population shifts in metropolitan NSW from 2011 to 2021. @cr-metro-map-3
+
+:::{#cr-metro-map-3 .viz}
+![](images/metro_map_3.png){style="width:100%; height:100%; object-fit:contain; border-radius:0"}
+:::
+
+::::::::
+
+
+::::::::{.cr-section layout="sidebar-right"}
+
+According to 2011 Census, around **4.14 million** people lived in the metropolitan region, accounting for about **60%** of the entire NSW population. @cr-metro-pop-1
+
+:::{#cr-metro-pop-1}
+![](images/metro_pop_1.png){fig-align="left" style="width:95%; height:50%; border-radius:0"}
+:::
+
+By 2021, that metropolitan population had grown to almost **5 million**, accounting for more than 60% of the entire NSW population. [@cr-metro-pop-2]{style="display:block; margin-left:-2rem"}
+
+:::{#cr-metro-pop-2}
+![](images/metro_pop_2.png){fig-align="left" style="width:95%; height:50%; border-radius:0"}
+:::
+
+Western Sydney and South Western Sydney alone each passed the milestone of 1 million residents. @cr-metro-pop-3
+
+**Western Sydney’s population growth rate alone has reached closely 30%.**
+[@cr-metro-pop-3]{scale-by="4" pan-to="-80%, 150%"}
+
+:::{#cr-metro-pop-3}
+![](images/metro_pop_3.png){fig-align="left" style="width:95%; height:50%; border-radius:0"}
+:::
+
+
+Next, let’s break down the metropolitan region in more detail. @cr-metro-pop-4
+
+:::{focus-on="cr-metro-pop-4"}
+
+Each [**Local Health District**]{style="color: #439755;"} can be mapped using Statistical Area Level 2 (SA2) boundaries. 
+
+<br>
+
+Defined by the ABS, an SA2 represents a community where people live, work, and interact socially and economically. 
+
+<br>
+
+While SA2s do not always fit neatly within a single LHD, together they provide a useful way to examine communities at a smaller geographic scale. @cr-metro-pop-4
+
+:::
+
+We calculated population growth rates by SA2. From this, we discovered that… @cr-metro-pop-4
+
+:::{#cr-metro-pop-4}
+![](images/metro_pop_4.png){fig-align="left" style="width:95%; height:50%; border-radius:0"}
+:::
+
+
+We identified [**high-grwoth SA2s**]{style="color: #F59E0B;"} with growth rate exceeding 100%. @cr-metro-pop-5
+
+Also, we found that most of [**high-grwoth SA2s**]{style="color: #F59E0B;"} are concentrated in Western Sydney.
+[@cr-metro-pop-5]{scale-by="3" pan-to="-100%, -62%"}
+
+Next, we focus  on the [**high-grwoth SA2s**]{style="color: #F59E0B;"} within Western Sydney.
+[@cr-metro-pop-5]{scale-by="3" pan-to="-100%, -62%"}
+
+:::{#cr-metro-pop-5}
+![](images/metro_pop_5.png){fig-align="left" style="width:95%; height:50%; border-radius:0"}
+:::
+
+:::{focus-on="cr-metro-pop-6"}
+
+Back in 2011, their populations were all under 10,000. Over just ten years, these communities grew at an extraordinary pace. 
+
+<br>
+
+This rapid change signals that WSLHD is full of fascinating and valuable patterns for us to explore... @cr-metro-pop-6
+
+:::
+
+
+:::{#cr-metro-pop-6}
+![](images/metro_pop_6.png){fig-align="left" style="width:95%; height:50%; border-radius:0"}
+:::
+
+::::::::
+
+
+::::::::{.cr-section layout="overlay-left"}
+
+Let's look at WSLHD. @cr-wslhd-map-1
+
+
+:::{#cr-wslhd-map-1}
+![](images/wslhd_map_1.png){style="width:100%; height:100%; object-fit:contain; border-radius:0"}
+:::
+
+
+WSLHD has four LGAs. @cr-wslhd-map-2
+
+
+:::{#cr-wslhd-map-2}
+![](images/wslhd_map_2.png){style="width:100%; height:100%; object-fit:contain; border-radius:0"}
+:::
+
+
+This is Blacktown. @cr-wslhd-map-3
+
+:::{#cr-wslhd-map-3}
+![](images/wslhd_map_3.png){style="width:100%; height:100%; object-fit:contain; border-radius:0"}
+:::
+
+This is The Hills Shire. @cr-wslhd-map-4
+
+:::{#cr-wslhd-map-4}
+![](images/wslhd_map_4.png){style="width:100%; height:100%; object-fit:contain; border-radius:0"}
+:::
+
+This is Parramatta. @cr-wslhd-map-5
+
+:::{#cr-wslhd-map-5}
+![](images/wslhd_map_5.png){width=100% style="border-radius: 0%;"}
+:::
+
+This is Cumberland. @cr-wslhd-map-6
+
+:::{#cr-wslhd-map-6}
+![](images/wslhd_map_6.png){style="width:100%; height:100%; object-fit:contain; border-radius:0"}
+:::
+
+
+Let's look at the healthcare network. @cr-wslhd-map-7
+
+WSLHD has four main hospitals. @cr-wslhd-map-7
+
+This is Blacktown Hospital
+[@cr-wslhd-map-7]{scale-by="4" pan-to="10%, -60%"}
+
+This is Mount Druitt Hospital
+[@cr-wslhd-map-7]{scale-by="4" pan-to="-9%, -68%"}
+
+These are Westmead Hospital and Cumberland Hospital
+[@cr-wslhd-map-7]{scale-by="4" pan-to="-25%, -72%"}
+
+This is Auburn Hospital
+[@cr-wslhd-map-7]{scale-by="4" pan-to="-37%, -97%"}
+
+:::{#cr-wslhd-map-7 .viz}
+![](images/wslhd_map_7.png){style="width:100%; height:100%; object-fit:contain; border-radius:0"}
+:::
+
+::::::::
+
+
+
+

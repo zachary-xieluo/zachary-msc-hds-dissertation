@@ -1,0 +1,814 @@
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(dplyr)
+library(tidyr)
+library(strayr)
+library(sf)
+library(scales)
+library(ggplot2)
+library(smoothr)  
+library(patchwork) 
+```
+
+```{r, echo=TRUE}
+# Read in population data
+pop_metro_comp <- read.csv("data/pop_size_nsw_compare.csv") %>%
+  filter(in_metro_2021 == 1)
+
+# Read in the SA2-to-LGA-to-LHD mapping table
+geo_nsw_2021 <- read.csv("data/sa2_lga_lhd_nsw_2021.csv") 
+
+# Read SA2 map
+sa2_map_2021 <- read_absmap("sa22021") %>%
+  filter(state_name_2021 == "New South Wales") %>%
+  
+  # Remove offshore
+  filter(!grepl("Lord Howe Island", sa2_name_2021, ignore.case = TRUE))
+
+# Read LGA map
+lga_map_2021 <- read_absmap("lga2021") %>%
+  filter(state_name_2021 == "New South Wales") 
+
+# Read LHD map
+lhd_map_2023 <- read_absmap("nsw_lhd2023") 
+```
+
+
+```{r}
+check_pop_size <- pop_metro_comp %>%
+  arrange(pop_2021)
+
+head(check_pop_size, 30)
+```
+
+```{r}
+# Extract non-residential from check_pop_size
+non_res_sa2 <- check_pop_size %>%
+  arrange(pop_2021) %>%       
+  slice_head(n = 15) %>%            
+  pull(sa2_name_2021) %>%           
+  as.list()
+
+# Get all numeric columns in the dataset
+num_cols <- names(select(pop_metro_comp, where(is.numeric)))
+
+# Exclude columns that should not be cleaned
+cols_to_clean <- setdiff(num_cols, c("in_wslhd_2021", "in_metro_2021")) 
+
+# For all numeric columns (except protected ones),
+# set values to NA for the non-residential SA2 areas
+pop_metro_comp_clean <- pop_metro_comp %>%
+  mutate(across(all_of(cols_to_clean),
+                ~ ifelse(sa2_name_2021 %in% non_res_sa2, NA_real_, .)))
+```
+
+```{r, include=FALSE}
+# Keep six metropolitan LHDs
+metro_nsw_lhd <- c(
+  "Nepean Blue Mountains","Northern Sydney",
+  "South Eastern Sydney","South Western Sydney",
+  "Sydney","Western Sydney"
+)
+
+# SA2 set in the six metropolitan LHDs
+sa2_set <- geo_nsw_2021 %>%
+  filter(nsw_lhd_name %in% metro_nsw_lhd) %>%
+  pull(sa2_name_2021) %>%
+  unique()
+
+# SA2 geometries (metro only)
+sa2_metro <- sa2_map_2021 %>%
+  filter(sa2_name_2021 %in% sa2_set)
+
+# LGA set in the six metropolitan LHDs
+lga_set <- geo_nsw_2021 %>%
+  filter(nsw_lhd_name %in% metro_nsw_lhd) %>%
+  pull(lga_name_2021) %>%
+  unique()
+
+# LGA/LHD geometries (metro only)
+lga_metro_2021 <- lga_map_2021 %>%
+  filter(lga_name_2021 %in% lga_set)
+
+lhd_metro_2021 <- lhd_map_2023 %>%
+  filter(nsw_lhd_name %in% metro_nsw_lhd)
+```
+
+```{r, include=FALSE}
+# Join map 
+map_pop_metro_comp <- sa2_metro %>%
+  left_join(pop_metro_comp_clean, by = "sa2_name_2021")
+```
+
+
+```{r, include=FALSE}
+# make sure CRS matches SA2
+lga_metro_2021 <- st_transform(lga_metro_2021, st_crs(sa2_metro))
+lhd_metro_2021 <- st_transform(lhd_metro_2021, st_crs(sa2_metro))
+
+# union of metro SA2 as clipping mask
+metro_mask <- sa2_metro %>%
+  st_union() %>%
+  st_make_valid()
+
+# intersection (clip to mask)
+lga_clip <- st_intersection(lga_metro_2021, metro_mask)
+lhd_clip <- st_intersection(lhd_metro_2021, metro_mask)
+
+# bbox for coord_sf
+bbox <- st_bbox(sa2_metro)
+```
+
+```{r}
+# Plot
+pop_fill_scale <- function() {
+  scale_fill_viridis_c(
+    option = "plasma",
+    name   = "Growth Rate",
+    labels = scales::percent,
+    oob    = scales::squish,
+  )
+}
+
+ggplot(map_pop_metro_comp) +
+  geom_sf(aes(fill = growth_rate), color = "black", linewidth = 0.1) +
+  geom_sf(data = lga_clip, fill = NA, color = "red", linewidth = 0.4) +
+  geom_sf(data = lhd_clip, fill = NA, color = "lightblue", linewidth = 0.4) +
+  pop_fill_scale() +
+  labs(title = "NSW Metropolitan Local Health Districts Population Growth Rate Map (Cencus 2021)") +
+  coord_sf(
+    xlim = c(bbox["xmin"], bbox["xmax"]),
+    ylim = c(bbox["ymin"], bbox["ymax"]),
+    expand = FALSE
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid      = element_blank(),
+    axis.text       = element_blank(),
+    axis.ticks      = element_blank(),
+    axis.title      = element_blank(),
+    legend.position = "right"
+  )
+```
+
+
+
+```{r}
+pop_metro_comp_clean <- pop_metro_comp_clean %>%
+  left_join(geo_nsw_2021 %>% select(sa2_name_2021, nsw_lhd_name),
+            by = "sa2_name_2021")
+
+pop_metro_comp_long <- pop_metro_comp_clean %>%
+  pivot_longer(
+    cols = c(pop2011_as21, pop_2021),   
+    names_to  = "year",
+    values_to = "population",
+    values_drop_na = TRUE
+  ) %>%
+  mutate(year = recode(year,
+                       pop2011_as21 = "2011",
+                       pop_2021     = "2021"))
+```
+
+```{r}
+metro_pop_long <- pop_metro_comp_clean %>%
+  group_by(nsw_lhd_name) %>%
+  summarise(
+    pop_2011 = sum(pop2011_as21, na.rm = TRUE),
+    pop_2021 = sum(pop_2021,     na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  pivot_longer(
+    cols = c(pop_2011, pop_2021),
+    names_to  = "year",
+    values_to = "population"
+  ) %>%
+  mutate(year = recode(year, pop_2011 = "2011", pop_2021 = "2021"))
+```
+
+```{r}
+ggplot(metro_pop_long, aes(x = reorder(nsw_lhd_name, population),
+                           y = population, fill = year)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6) +
+  geom_text(aes(label = scales::comma(population)),
+            position = position_dodge(width = 0.7), vjust = -0.25, size = 2) +
+  scale_y_continuous(labels = scales::label_comma()) +
+  labs(title = "Population by LHD (NSW Metropolitan, 2011 vs 2021)",
+       x = NULL, y = "Population") +
+  theme_minimal(base_size = 11) +
+  theme(axis.text.x = element_text(size = 6))
+```
+
+
+```{r}
+metro_growth_lhd <- pop_metro_comp_clean %>%
+  group_by(nsw_lhd_name) %>%
+  summarise(
+    pop_2011 = sum(pop2011_as21, na.rm = TRUE),
+    pop_2021 = sum(pop_2021,     na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(growth_rate = if_else(pop_2011 > 0, (pop_2021 / pop_2011) - 1, NA_real_))
+
+metro_growth_lhd_long <- metro_growth_lhd %>%
+  select(nsw_lhd_name, growth_rate) %>%
+  pivot_longer(cols = growth_rate, names_to = "metric", values_to = "value")
+```
+
+```{r}
+ggplot(metro_growth_lhd, aes(x = reorder(nsw_lhd_name, growth_rate), y = growth_rate)) +
+  geom_col(width = 0.5) +
+  geom_text(aes(label = scales::percent(growth_rate, 0.1)),
+            vjust = -0.3, size = 3) +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1),
+                     expand = expansion(mult = c(0, 0.05))) +
+  labs(title = "Population Growth Rate by LHD (NSW Metropolitan, 2011→2021)",
+       x = NULL, y = "Growth rate") +
+  theme_minimal(base_size = 11) +
+  theme(axis.text.x = element_text(size = 6))
+```
+
+```{r}
+summary(pop_metro_comp_clean$growth_rate)
+quantile(pop_metro_comp_clean$growth_rate, c(0,.5,.9,.95,1), na.rm = TRUE)
+```
+
+```{r}
+rate_metro <- pop_metro_comp_clean %>% filter(!is.na(growth_rate))
+
+rate_metro <- rate_metro %>% 
+  mutate(growth_rate_cap = pmin(growth_rate, 1))
+
+rate_med <- median(rate_metro$growth_rate, na.rm = TRUE)       
+rate_p90 <- quantile(rate_metro$growth_rate, 0.90, na.rm = TRUE)
+
+ggplot(rate_metro, aes(x = growth_rate_cap)) +
+  geom_histogram(binwidth = 0.05, boundary = 0, closed = "left") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "black") +
+  geom_vline(xintercept = rate_med, color = "blue") +
+  geom_vline(xintercept = rate_p90, color = "red") +
+  annotate("text", x = rate_med + 0.02, y = Inf,
+           label = paste0("Median = ", percent(rate_med, 0.1)),
+           vjust = 1.2, hjust = 0, color = "blue", size = 3.2) +
+  annotate("text", x = rate_p90 + 0.02, y = Inf,
+           label = paste0("90th percentile = ", percent(rate_p90, 0.1)),
+           vjust = 1.2, hjust = 0, color = "red", size = 3.2) +
+  scale_x_continuous(labels = label_percent(accuracy = 1)) +   
+  scale_y_continuous(expand = expansion(mult = c(0, 0.10))) +
+  coord_cartesian(clip = "off") +
+  labs(
+    title = "Growth rate histogram (cap at 100%)",
+    x = "Growth rate", y = "Count",
+  ) +
+  theme_minimal(base_size = 10)
+
+```
+
+
+```{r}
+rate_p99 <- quantile(map_pop_metro_comp$growth_rate, 0.99, na.rm = TRUE)
+
+map_df <- map_pop_metro_comp %>%
+  mutate(
+    gr_cap = pmin(growth_rate, 1),  
+    is_outlier = growth_rate > 1  
+  )
+
+ggplot() +
+  geom_sf(data = map_df, aes(fill = gr_cap), color = "black", linewidth = 0.1) +
+  geom_sf(data = lga_clip, fill = NA, color = "red", linewidth = 0.4) +
+  geom_sf(data = lhd_clip, fill = NA, color = "lightblue", linewidth = 0.4) +
+  scale_fill_viridis_c(
+    option = "plasma", name = "Growth rate",
+    labels = percent_format(accuracy = 1),
+    limits = c(0, 1), oob = squish
+  ) +
+
+  geom_sf(data = subset(map_df, is_outlier), fill = NA, color = "black", linewidth = 0.5) +
+  labs(
+    title   = "NSW Metropolitan LHDs Poluation Growth Rate (cap at 100%; >100% outlined)",
+    caption = paste0("Median = ", percent(median(map_df$growth_rate, na.rm=TRUE),1),
+                     "; 90th percentile = ", percent(quantile(map_df$growth_rate, .9, na.rm=TRUE),1),
+                     "; 99th percentile = ", percent(rate_p99,1), ".")
+  ) +
+  coord_sf(xlim = c(bbox["xmin"], bbox["xmax"]),
+           ylim = c(bbox["ymin"], bbox["ymax"]), expand = FALSE) +
+  theme_minimal() +
+  theme(panel.grid = element_blank(), axis.text = element_blank(),
+        axis.ticks = element_blank(), axis.title = element_blank(),
+        legend.position = "right")
+```
+
+```{r}
+# Plot top 30 and bottom 30 SA2s for population growth (2011→2021)
+
+top_n <- 30
+
+top_sa2 <- pop_metro_comp_clean %>%
+  arrange(desc(growth_rate)) %>%
+  slice_head(n = top_n)
+
+bottom_sa2 <- pop_metro_comp_clean %>%
+  arrange(growth_rate) %>%
+  slice_head(n = top_n)
+
+ggplot(top_sa2,
+       aes(x = reorder(sa2_name_2021, growth_rate), y = growth_rate, fill = nsw_lhd_name)) +
+  geom_col(width = 0.7) +
+  geom_text(
+    aes(label = scales::percent(growth_rate, 0.1),y = growth_rate), size = 2, hjust = -0.05) +
+  coord_flip() +
+  scale_y_continuous(labels = label_percent(accuracy = 0.1)) +
+  labs(title = paste0("Top ", top_n, " SA2 - Population Growth (2011→2021)"),
+       x = NULL, y = "Growth rate", fill = "LHD") +
+  theme_minimal(base_size = 10)
+
+ggplot(bottom_sa2,
+       aes(x = reorder(sa2_name_2021, -growth_rate), y = growth_rate, fill = nsw_lhd_name)) +
+  geom_col(width = 0.7) +
+  geom_text(
+    aes(label = scales::percent(growth_rate, 0.1),y = growth_rate), size = 2, hjust = 1) +
+  coord_flip() +
+  scale_y_continuous(labels = label_percent(accuracy = 0.1)) +
+  labs(title = paste0("Bottom ", top_n, " SA2 - Population Growth (2011→2021)"),
+       x = NULL, y = "Growth rate", fill = "LHD") +
+  theme_minimal(base_size = 10)
+
+```
+
+```{r}
+metro_pop_long <- metro_pop_long %>%
+  mutate(year = factor(year, levels = c("2011","2021")))
+
+metro_pop_1 <- ggplot(
+  metro_pop_long,
+  aes(x = reorder(nsw_lhd_name, population),
+      y = population,
+      fill = year,
+      alpha = year)
+) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6) +              
+  geom_text(
+    data = filter(metro_pop_long, year == "2011"),
+    aes(label = scales::comma(population)),
+    position = position_dodge(width = 0.7),
+    vjust = -0.45, hjust = 1.0, size = 5                           
+  ) +
+  scale_fill_manual(
+    values = c("2011" = "#43978D", "2021" = "#D46C4E"),
+    breaks = "2011",                                   
+    name   = NULL                                      
+  ) +
+  scale_alpha_manual(values = c("2011" = 1, "2021" = 0), guide = "none") +
+  scale_y_continuous(labels = scales::label_comma()) +
+  labs(title = NULL, x = NULL, y = "Population") +             
+  theme_minimal(base_size = 11) +
+  theme(
+    axis.text.x    = element_text(size = 14, color = "black"),
+    axis.text.y    = element_text(size = 16, color = "black"),
+    legend.text    = element_text(size = 16, color = "black"),
+    legend.position= "bottom",
+    panel.grid     = element_blank()
+  )
+```
+
+```{r}
+ggsave("metro_pop_1.png", metro_pop_1,
+     width = 12, height = 9, units = "in", dpi = 600, bg = "white")
+```
+
+```{r}
+metro_pop_2 <- ggplot(
+  metro_pop_long,
+  aes(x = reorder(nsw_lhd_name, population),
+      y = population,
+      fill = year,
+      alpha = year)
+) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6) +              
+  geom_text(
+    data = metro_pop_long,
+    aes(label = scales::comma(population)),
+    position = position_dodge(width = 0.7),
+    vjust = -0.25, size = 4
+  ) +
+  scale_fill_manual(
+    values = c("2011" = "#43978D", "2021" = "#D46C4E"),
+    breaks = c("2011","2021"),
+    name   = NULL
+  ) +
+  scale_alpha_manual(values = c("2011" = 1, "2021" = 1), guide = "none") +
+  scale_y_continuous(labels = scales::label_comma()) +
+  labs(title = NULL, x = NULL, y = "Population") +
+  theme_minimal(base_size = 11) +
+  theme(
+    axis.text.x    = element_text(size = 14, color = "black"),
+    axis.text.y    = element_text(size = 16, color = "black"),
+    legend.text    = element_text(size = 16, color = "black"),
+    legend.position= "bottom",
+    panel.grid     = element_blank()
+  )
+```
+
+```{r}
+ggsave("metro_pop_2.png", metro_pop_2,
+     width = 12, height = 9, units = "in", dpi = 600, bg = "white")
+```
+
+```{r}
+growth_lbl <- tibble::tibble(
+  nsw_lhd_name = c(
+    "South Eastern Sydney",
+    "Nepean Blue Mountains",
+    "Northern Sydney",
+    "Sydney",
+    "South Western Sydney",
+    "Western Sydney"
+  ),
+  label = c("+11.7%", "+14.0%", "+14.4%", "+18.0%", "+26.1%", "+29.7%")
+)
+
+lab_df <- metro_pop_long %>%
+  filter(year == "2021") %>%
+  select(nsw_lhd_name, population) %>%
+  left_join(growth_lbl, by = "nsw_lhd_name") %>%
+  mutate(y = population * 1.02)   
+
+metro_pop_3 <- ggplot(
+  metro_pop_long,
+  aes(x = reorder(nsw_lhd_name, population),
+      y = population,
+      fill = year,
+      alpha = year)
+) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6) +              
+  geom_text(
+    data = metro_pop_long,
+    aes(label = scales::comma(population)),
+    position = position_dodge(width = 0.7),
+    vjust = -0.25, size = 4
+  ) +
+  scale_fill_manual(
+    values = c("2011" = "#43978D", "2021" = "#D46C4E"),
+    breaks = c("2011","2021"),
+    name   = NULL
+  ) +
+    geom_text(
+    data = lab_df,
+    inherit.aes = FALSE,
+    aes(x = reorder(nsw_lhd_name, y), y = y, label = label),
+    vjust = -1, size = 4, color = "red"
+  ) +
+  scale_alpha_manual(values = c("2011" = 1, "2021" = 1), guide = "none") +
+  scale_y_continuous(labels = scales::label_comma()) +
+  labs(title = NULL, x = NULL, y = "Population") +
+  theme_minimal(base_size = 11) +
+  theme(
+    axis.text.x    = element_text(size = 14, color = "black"),
+    axis.text.y    = element_text(size = 16, color = "black"),
+    legend.text    = element_text(size = 16, color = "black"),
+    legend.position= "bottom",
+    panel.grid     = element_blank()
+  )
+```
+
+```{r}
+ggsave("metro_pop_3.png", metro_pop_3,
+     width = 12, height = 9, units = "in", dpi = 600, bg = "white")
+```
+
+
+```{r}
+# 1) Build metro LHD polygons → intersect with metro mask → union → fill holes
+lhd <- lhd_metro_2021 %>%
+  filter(nsw_lhd_name %in% metro_nsw_lhd) %>%
+  st_make_valid() %>%
+  st_transform(st_crs(sa2_metro))
+
+metro_mask <- sa2_metro %>%
+  st_make_valid() %>% st_union() %>% st_make_valid()
+
+lhd_union_metro <- st_intersection(lhd, metro_mask) %>%
+  st_collection_extract("POLYGON", warn = FALSE) %>%
+  st_cast("MULTIPOLYGON", warn = FALSE) %>%
+  filter(!st_is_empty(geometry)) %>%
+  group_by(nsw_lhd_name) %>%
+  summarise(geometry = st_union(geometry), .groups = "drop") %>%
+  st_make_valid() %>%
+  st_transform(3577) %>%                    # meters
+  smoothr::fill_holes(threshold = 1e12) %>% # fill all holes (tune if needed)
+  st_make_valid()
+
+# Use this as the plotting source
+lhd_src <- lhd_union_metro %>%
+  mutate(nsw_lhd_name = factor(nsw_lhd_name, levels = metro_nsw_lhd))
+
+# 2) Ensure SA2/LGA are in the same CRS as LHD
+sa2_metro_pl <- sa2_metro %>%
+  st_make_valid() %>%
+  st_transform(st_crs(lhd_src))
+
+lga_metro_pl <- NULL
+if (exists("lga_metro_2021")) {
+  lga_metro_pl <- lga_metro_2021 %>%
+    st_make_valid() %>%
+    st_transform(st_crs(lhd_src))
+}
+```
+
+
+```{r, warning=FALSE}
+# 3) Single-panel plot: LHD fill + (optional) LGA border placeholder + SA2 borders + LHD outer border
+bbox_pad_plot <- function(sf_row,
+                          fill_col         = "#439755",
+                          pad              = 0.05,
+                          sa2_border_col   = "#144a74",
+                          sa2_border_size  = 0.18,
+                          lga_border_col   = "#64748b",   # placeholder color (slate-500)
+                          lga_border_size  = 0.35,
+                          lga_border_type  = "22",        # dashed placeholder
+                          lhd_border_col   = "#111827",   # dark outline for LHD
+                          lhd_border_size  = 0.4) {
+
+  # Square window centered on current LHD (consistent visual size)
+  bb <- st_bbox(sf_row)
+  cx <- (bb["xmin"] + bb["xmax"]) / 2
+  cy <- (bb["ymin"] + bb["ymax"]) / 2
+  hw <- (bb["xmax"] - bb["xmin"]) / 2
+  hh <- (bb["ymax"] - bb["ymin"]) / 2
+  R  <- max(hw, hh) * (1 + pad)
+
+  # SA2 within current LHD (for borders)
+  sa2_sub <- st_filter(sa2_metro_pl, sf_row, .predicate = st_intersects)
+
+  # LGA placeholder layer (optional)
+  if (!is.null(lga_metro_pl)) {
+    lga_sub <- st_filter(lga_metro_pl, sf_row, .predicate = st_intersects)
+  } else {
+    lga_sub <- NULL
+  }
+
+  p <- ggplot() +
+    # LHD fill
+    geom_sf(data = sf_row, fill = fill_col, color = NA) +
+    # (Optional) LGA border placeholder
+    # { if (!is.null(lga_sub) && nrow(lga_sub) > 0)
+    #     geom_sf(data = lga_sub, fill = NA,
+    #             color = lga_border_col, linewidth = lga_border_size,
+    #             linetype = lga_border_type)
+    #   else NULL } +
+    # SA2 borders
+    geom_sf(data = sa2_sub, fill = NA,
+            color = sa2_border_col, linewidth = sa2_border_size) +
+    # LHD outer border on top
+    geom_sf(data = sf_row, fill = NA,
+            color = lhd_border_col, linewidth = lhd_border_size) +
+    coord_sf(
+      xlim   = c(cx - R, cx + R),
+      ylim   = c(cy - R, cy + R),
+      expand = FALSE,
+      datum  = NA
+    ) +
+    labs(title = as.character(sf_row$nsw_lhd_name[1])) +
+    theme_void(base_size = 12) +
+    theme(
+      plot.title   = element_text(hjust = 0.5),
+      aspect.ratio = 1,
+      plot.margin  = margin(8, 8, 8, 8)
+    )
+  p
+}
+
+# 4) Build six panels and arrange 3×2
+plots <- lapply(levels(lhd_src$nsw_lhd_name), function(nm) {
+  bbox_pad_plot(filter(lhd_src, nsw_lhd_name == nm))
+})
+
+metro_pop_4 <- (plots[[1]] + plots[[2]] + plots[[3]] +
+ plots[[4]] + plots[[5]] + plots[[6]]) +
+  plot_layout(ncol = 3, widths = c(1,1,1), heights = c(1,1))
+```
+
+```{r}
+ggsave("metro_pop_4.png", metro_pop_4,
+     width = 12, height = 9, units = "in", dpi = 600, bg = "white")
+```
+
+
+```{r}
+# --- helpers & lists (keep as-is) ---
+normalize_key <- function(x) {
+  x <- tolower(x)
+  x <- gsub("\\s*-\\s*", " - ", x)
+  x <- gsub("\\s+", " ", trimws(x))
+  x
+}
+
+hl_all <- c(
+  "Banksmeadow","Marsden Park - Shanes Park","Oran Park","Box Hill - Nelson",
+  "Gledswood Hills - Gregory Hills","Schofields - East","Edmondson Park",
+  "Leppington - Catherine Field","Denham Court - Bardia","Cobbitty - Bringelly",
+  "Schofields (West) - Colebee","North Kellyville",
+  "Wentworth Point - Sydney Olympic Park","Spring Farm",
+  "Jordan Springs - Llandilo","Riverstone","Kellyville - West",
+  "Wolli Creek","Rosebery - Beaconsfield","Ryde - South"
+)
+hl_special <- c("Banksmeadow", "Marsden Park - Shanes Park")
+
+hl_keys_all     <- normalize_key(hl_all)
+hl_keys_special <- normalize_key(hl_special)
+
+
+# --- plot function with step toggles ---
+bbox_pad_plot_hl <- function(sf_row,
+                             fill_col         = "#439755",
+                             pad              = 0.05,
+                             sa2_border_col   = "#144a74",
+                             sa2_border_size  = 0.18,
+                             lga_border_col   = "#64748b",
+                             lga_border_size  = 0.35,
+                             lga_border_type  = "22",
+                             lhd_border_col   = "#111827",
+                             lhd_border_size  = 0.4,
+                             # highlight colors
+                             general_fill     = "#F59E0B",
+                             special_fill     = "#F59E0B",
+                             hl_alpha         = 0.95,
+                             # step switches
+                             paint_general    = TRUE,
+                             paint_special    = FALSE,
+                             # NEW: toggle for LGA layer
+                             show_lga         = FALSE) {
+
+  # square window centered on current LHD
+  bb <- sf::st_bbox(sf_row)
+  cx <- (bb["xmin"] + bb["xmax"]) / 2
+  cy <- (bb["ymin"] + bb["ymax"]) / 2
+  hw <- (bb["xmax"] - bb["xmin"]) / 2
+  hh <- (bb["ymax"] - bb["ymin"]) / 2
+  R  <- max(hw, hh) * (1 + pad)
+
+  # SA2 within current LHD
+  sa2_sub <- sf::st_filter(sa2_metro_pl, sf_row, .predicate = sf::st_intersects) |>
+    dplyr::mutate(.key = normalize_key(sa2_name_2021))
+
+  sa2_hl_general <- dplyr::filter(sa2_sub, .key %in% setdiff(hl_keys_all, hl_keys_special))
+  sa2_hl_special <- dplyr::filter(sa2_sub, .key %in% hl_keys_special)
+
+  # base
+  p <- ggplot() +
+    geom_sf(data = sf_row, fill = fill_col, color = NA)
+
+  # (optional) LGA dashed placeholder — hidden by default
+  if (show_lga && exists("lga_metro_pl") && !is.null(lga_metro_pl)) {
+    lga_sub <- sf::st_filter(lga_metro_pl, sf_row, .predicate = sf::st_intersects)
+    if (nrow(lga_sub) > 0) {
+      p <- p + geom_sf(data = lga_sub, fill = NA,
+                       color = lga_border_col, linewidth = lga_border_size,
+                       linetype = lga_border_type)
+    }
+  }
+
+  # step 1: general highlights (orange)
+  if (paint_general && nrow(sa2_hl_general) > 0) {
+    p <- p + geom_sf(data = sa2_hl_general, fill = general_fill, color = NA, alpha = hl_alpha)
+  }
+
+  # step 2: special highlights (brown) — drawn after general to override
+  if (paint_special && nrow(sa2_hl_special) > 0) {
+    p <- p + geom_sf(data = sa2_hl_special, fill = special_fill, color = NA, alpha = hl_alpha)
+  }
+
+  # borders on top + viewport
+  p +
+    geom_sf(data = sa2_sub, fill = NA, color = sa2_border_col, linewidth = sa2_border_size) +
+    geom_sf(data = sf_row,  fill = NA, color = lhd_border_col, linewidth = lhd_border_size) +
+    coord_sf(
+      xlim = c(cx - R, cx + R),
+      ylim = c(cy - R, cy + R),
+      expand = FALSE,
+      datum = NA
+    ) +
+    labs(title = as.character(sf_row$nsw_lhd_name[1])) +
+    theme_void(base_size = 12) +
+    theme(
+      plot.title   = element_text(hjust = 0.5),
+      aspect.ratio = 1,
+      plot.margin  = margin(8, 8, 8, 8)
+    )
+}
+```
+
+
+```{r}
+plots_2 <- lapply(levels(lhd_src$nsw_lhd_name), function(nm) {
+  bbox_pad_plot_hl(dplyr::filter(lhd_src, nsw_lhd_name == nm),
+                   paint_general = TRUE, 
+                   paint_special = TRUE, 
+                   special_fill  = "#F59E0B",
+                   show_lga = FALSE)
+})
+
+metro_pop_5 <- patchwork::wrap_plots(plots_2, ncol = 3)
+
+```
+
+```{r}
+plots_3 <- lapply(levels(lhd_src$nsw_lhd_name), function(nm) {
+  bbox_pad_plot_hl(dplyr::filter(lhd_src, nsw_lhd_name == nm),
+                   paint_general = TRUE, paint_special = TRUE, show_lga = FALSE)
+})
+
+metro_pop_6 <- patchwork::wrap_plots(plots_3, ncol = 3)
+
+```
+
+```{r}
+ggsave("metro_pop_5.png", metro_pop_5,
+     width = 12, height = 9, units = "in", dpi = 600, bg = "white")
+
+
+ggsave("metro_pop_6.png", metro_pop_6,
+     width = 12, height = 9, units = "in", dpi = 600, bg = "white")
+```
+
+```{r}
+# 1) subset to WSLHD & pick top N by growth_rate
+top_sa2_wslhd <- pop_metro_comp_clean %>%
+  filter(nsw_lhd_name == "Western Sydney") %>%
+  filter(!is.na(growth_rate), !is.na(pop2011_as21), !is.na(pop_2021)) %>%
+  arrange(desc(growth_rate)) %>%
+  slice_head(n = 8)
+
+# Arrange
+sa2_levels_by_gr <- top_sa2_wslhd %>%
+  arrange(pop_2021) %>%
+  pull(sa2_name_2021)
+
+# 2) long format for stacked bars (2011 at bottom, 2021 on top)
+top_sa2_wslhd_long <- top_sa2_wslhd %>%
+  select(sa2_name_2021, nsw_lhd_name, pop2011_as21, pop_2021, growth_rate) %>%
+  pivot_longer(c(pop2011_as21, pop_2021),
+               names_to = "year", values_to = "population") %>%
+  mutate(year = recode(year, pop2011_as21 = "2011", pop_2021 = "2021"),
+         year = factor(year, levels = c("2021", "2011")), 
+         sa2_name_2021 = factor(sa2_name_2021, levels = sa2_levels_by_gr))
+
+# 3) totals for placing growth-rate label to the right of each bar
+totals <- top_sa2_wslhd %>%
+  mutate(total_pop = pop2011_as21 + pop_2021) %>%
+  transmute(sa2_name_2021 = factor(sa2_name_2021, levels = sa2_levels_by_gr),
+            total_pop, growth_rate)
+
+```
+
+```{r}
+# 4) plot (stacked bar, absolute values inside each segment, growth rate as a number label)
+metro_pop_6 <- ggplot(top_sa2_wslhd_long,
+       aes(x = sa2_name_2021, y = population, fill = year)) +
+  geom_col(width = 0.7, color = NA) +
+
+  geom_text(aes(label = comma(population)),
+            position = position_stack(vjust = 0.5),
+            size = 4, color = "black") +
+
+  geom_text(data = totals,
+            aes(x = sa2_name_2021,
+                y = total_pop * 1.02,
+                label = ifelse(growth_rate > 0,
+                   paste0("+", scales::percent(growth_rate, accuracy = 0.1)),
+                   scales::percent(growth_rate, accuracy = 0.1))),
+            inherit.aes = FALSE,
+            size = 4, hjust = 0, color = "red") +
+  
+  coord_flip(clip = "off") +
+  scale_y_continuous(labels = comma,
+                     expand = expansion(mult = c(0, 0.15))) +
+  scale_fill_manual(
+    values = c("2011" = "#43978D", "2021" = "#D46C4E"),
+    breaks = c("2011", "2021"),
+    name = NULL
+  ) +
+  labs(
+    x = NULL, y = "Population"
+  ) +
+  theme_minimal(base_size = 10) +
+  theme(
+    axis.text.x    = element_text(size = 14, color = "black"),
+    axis.text.y    = element_text(size = 14, color = "black"),
+    legend.text    = element_text(size = 16, color = "black"),
+    legend.position= "bottom",
+    panel.grid     = element_blank(),
+    plot.margin = margin(5.5, 40, 5.5, 5.5)
+  )
+```
+
+```{r}
+ggsave("metro_pop_6.png", metro_pop_6,
+     width = 12, height = 9, units = "in", dpi = 600, bg = "white")
+```
+
