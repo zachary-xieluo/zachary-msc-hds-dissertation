@@ -16,9 +16,10 @@ pop_nsw_2021 <- read.csv("pop_size_nsw_2021.csv")
 edu_nsw_2021 <- read.csv("edu_level_nsw_2021.csv")
 occup_nsw_2021 <- read.csv("occupation_nsw_2021.csv")
 hohd_compo_nsw_2021 <- read.csv("hohd_compo_nsw_2021.csv")
-hohd_income_nsw_2021 <- read.csv("hohd_income_nsw_2021.csv")
+income_nsw_2021 <- read.csv("personal_income_nsw_2021.csv")
 labr_stats_nsw_2021 <- read.csv("labr_stats_nsw_2021.csv")
-sa2_wslhd_2021 <- read.csv("wslhd_sa2_2021.csv")
+housing_suit_nsw_2021 <- read.csv("housing_suitability_nsw_2021.csv")
+housing_type_nsw_2021 <- read.csv("housing_type_nsw_2021.csv")
 ```
 
 ```{r}
@@ -26,8 +27,10 @@ sa2_wslhd_2021 <- read.csv("wslhd_sa2_2021.csv")
 names(edu_nsw_2021)
 names(occup_nsw_2021)
 names(hohd_compo_nsw_2021)
-names(hohd_income_nsw_2021)
+names(income_nsw_2021)
 names(labr_stats_nsw_2021)
+names(housing_type_nsw_2021)
+names(housing_suit_nsw_2021)
 ```
 
 ```{r}
@@ -74,34 +77,27 @@ hohd_compo_nsw_2021 <- hohd_compo_nsw_2021 %>%
     not_applicable_hohd_compo = Not.applicable
   )
 
-hohd_income_nsw_2021 <- hohd_income_nsw_2021 %>%
+income_nsw_2021 <- income_nsw_2021 %>%
   rename(
     sa2 = sa2,
     neg_income = Negative.income,
     nil_income = Nil.income,
-    `1_149` = X.1..149...1..7.799.,
-    `150_299` = X.150..299...7.800..15.599.,
-    `300_399` = X.300..399...15.600..20.799.,
-    `400_499` = X.400..499...20.800..25.999.,
-    `500_649` = X.500..649...26.000..33.799.,
-    `650_799` = X.650..799...33.800..41.599.,
-    `800_999` = X.800..999...41.600..51.999.,
-    `1000_1249` = X.1.000..1.249...52.000..64.999.,
-    `1250_1499` = X.1.250..1.499...65.000..77.999.,
-    `1500_1749` = X.1.500..1.749...78.000..90.999.,
-    `1750_1999` = X.1.750..1.999...91.000..103.999.,
-    `2000_2499` = X.2.000..2.499...104.000..129.999.,
-    `2500_2999` = X.2.500..2.999...130.000..155.999.,
-    `3000_3499` = X.3.000..3.499...156.000..181.999.,
-    `3500_3999` = X.3.500..3.999...182.000..207.999.,
-    `4000_4499` = X.4.000..4.499...208.000..233.999.,
-    `4500_4999` = X.4.500..4.999...234.000..259.999.,
-    `5000_5999` = X.5.000..5.999...260.000..311.999.,
-    `6000_7999` = X.6.000..7.999...312.000..415.999.,
-    `8000_plus` = X.8.000.or.more...416.000.or.more.,
-    partial_stated = Partial.income.stated,
-    not_stated_hohd_income = All.incomes.not.stated,
-    not_applicable_hohd_income = Not.applicable
+    `1_149`      = `X.1..149...1..7.799.`,
+    `150_299`    = `X.150..299...7.800..15.599.`,
+    `300_399`    = `X.300..399...15.600..20.799.`,
+    `400_499`    = `X.400..499...20.800..25.999.`,
+    `500_649`    = `X.500..649...26.000..33.799.`,
+    `650_799`    = `X.650..799...33.800..41.599.`,
+    `800_999`    = `X.800..999...41.600..51.999.`,
+    `1000_1249`  = `X.1.000..1.249...52.000..64.999.`,
+    `1250_1499`  = `X.1.250..1.499...65.000..77.999.`,
+    `1500_1749`  = `X.1.500..1.749...78.000..90.999.`,
+    `1750_1999`  = `X.1.750..1.999...91.000..103.999.`,
+    `2000_2999`  = `X.2.000..2.999...104.000..155.999.`,
+    `3000_3499`  = `X.3.000..3.499...156.000..181.999.`,
+    `3500_plus`  = `X.3.500.or.more...182.000.or.more.`,
+    not_stated_income = Not.stated,
+    not_applicable_income = Not.applicable
   )
 
 labr_stats_nsw_2021 <- labr_stats_nsw_2021 %>%
@@ -117,6 +113,40 @@ labr_stats_nsw_2021 <- labr_stats_nsw_2021 %>%
     not_applicable_labr_stats = Not.applicable
   )
 
+housing_type_nsw_2021 <- housing_type_nsw_2021 %>%
+  rename(
+    sa2                                   = sa2,
+    owned_outright                        = `Owned.outright`,
+    owned_mortgage                        = `Owned.with.a.mortgage`,
+    rented_real_estate_agent              = `Rented..Real.estate.agent`,
+    rented_state_housing_authority        = `Rented..State.or.territory.housing.authority`,
+    rented_community_housing_provider     = `Rented..Community.housing.provider`,
+    rented_person_not_in_same_household   = `Rented..Person.not.in.same.household`,
+    rented_other_landlord_type            = `Rented..Other.landlord.type`,
+    rented_landlord_type_not_stated       = `Rented..Landlord.type.not.stated`,
+    other_tenure_type                     = `Other.tenure.type`,
+    tenure_type_not_stated                = `Tenure.type.not.stated`,
+    tenure_type_not_applicable            = `Tenure.type.not.applicable`,
+    total_dwellings                       = `Total.dwellings`
+  )
+
+housing_suit_nsw_2021 <- housing_suit_nsw_2021 %>%
+  rename(
+    sa2                           = sa2,
+    extra_bedrooms_4plus_needed   = `Four.or.more.extra.bedrooms.needed`,
+    extra_bedrooms_3_needed       = `Three.extra.bedrooms.needed`,
+    extra_bedrooms_2_needed       = `Two.extra.bedrooms.needed`,
+    extra_bedrooms_1_needed       = `One.extra.bedroom.needed`,
+    no_bedrooms_needed_or_spare   = `No.bedrooms.needed.or.spare`,
+    bedrooms_1_spare              = `One.bedroom.spare`,
+    bedrooms_2_spare              = `Two.bedrooms.spare`,
+    bedrooms_3_spare              = `Three.bedrooms.spare`,
+    bedrooms_4plus_spare          = `Four.or.more.bedrooms.spare`,
+    unable_to_determine           = `Unable.to.determine`,
+    not_stated_housing_suit       = `Not.stated`,
+    not_applicable_housing_suit   = `Not.applicable`
+  )
+               
 ```
 
 ```{r}
@@ -126,8 +156,10 @@ pop_nsw_2021 <- pop_nsw_2021 %>%
   left_join(edu_nsw_2021, by = "sa2") %>%
   left_join(occup_nsw_2021, by = "sa2") %>%
   left_join(hohd_compo_nsw_2021, by = "sa2") %>%
-  left_join(hohd_income_nsw_2021, by = "sa2") %>%
-  left_join(labr_stats_nsw_2021, by = "sa2")
+  left_join(income_nsw_2021, by = "sa2") %>%
+  left_join(labr_stats_nsw_2021, by = "sa2") %>%
+  left_join(housing_type_nsw_2021, by = "sa2") %>%
+  left_join(housing_suit_nsw_2021, by = "sa2")
 ```
 
 ```{r}
@@ -136,23 +168,64 @@ socioeconomics_nsw_2021 <- pop_nsw_2021 %>%
     # Collapse edu_level
     bachelor_above = rowSums(across(c(postgrad, grad_dip_cert, bachelor)), na.rm = TRUE),
     high_school_below = rowSums(across(c(cert_iii_iv, sec_10_plus, cert_i_ii, sec_below_10)), na.rm = TRUE),
+    unknown_edu = rowSums(across(c(supp_codes_edu, not_stated_edu)), na.rm = TRUE),
     
     # Collapse occupation
     managers_professionals = rowSums(across(c(managers, professionals)), na.rm = TRUE),
     everyone_else = rowSums(across(c(tech_trades, comm_personal, clerical_admin, sales, machinery_ops, labourers)), na.rm = TRUE),
+    unknown_occup = rowSums(across(c(inadequate_occup, not_stated_occup)), na.rm = TRUE),
  
-    # Collapse household income
+    # Collapse income
+    
     neg_nil_income = rowSums(across(c(neg_income, nil_income)), na.rm = TRUE),
-    very_low_income = rowSums(across(c(`1_149`, `150_299`, `300_399`, `400_499`, `500_649`, `650_799`, `800_999`)), na.rm = TRUE),
-    low_income = rowSums(across(c(`1000_1249`, `1250_1499`)), na.rm = TRUE),
-    middle_income = rowSums(across(c(`1500_1749`, `1750_1999`, `2000_2499`)), na.rm = TRUE),
-    high_income = rowSums(across(c(`2500_2999`)), na.rm = TRUE),
-    very_high_income = rowSums(across(c(`3000_3499`, `3500_3999`, `4000_4499`, `4500_4999`, `5000_5999`, `6000_7999`, `8000_plus`)), na.rm = TRUE),
+
+    # <50% NSW median (813)
+    very_low_income = rowSums(across(c(`1_149`, `150_299`, `300_399`)), na.rm = TRUE),
+
+    # 50–100%
+    low_income = rowSums(across(c(`400_499`, `500_649`, `650_799`, `800_999`)), na.rm = TRUE),
+
+    # 100–150%
+    middle_income = rowSums(across(c(`1000_1249`, `1250_1499`)), na.rm = TRUE),
+
+    # 150–200%
+    high_income = rowSums(across(c(`1500_1749`, `1750_1999`)), na.rm = TRUE),
+
+    # >200%
+    very_high_income = rowSums(across(c(`2000_2999`, `3000_3499`, `3500_plus`)), na.rm = TRUE),
+    
+    # Unknown
+    unknown_income = rowSums(across(c(not_stated_income)), na.rm = TRUE),
+     
  
     # Collapse labour status
     employed = rowSums(across(c(employed_fulltime, employed_parttime, employed_away)), na.rm = TRUE),
-    unemployed = rowSums(across(c(unemployed_fulltime, unemployed_parttime)), na.rm = TRUE)
-  )
+    unemployed = rowSums(across(c(unemployed_fulltime, unemployed_parttime)), na.rm = TRUE),
+    
+    # Collapse housing type
+    social_housing = rowSums(across(c(rented_state_housing_authority,
+                                     rented_community_housing_provider)), na.rm = TRUE),
+    
+    non_social_housing = rowSums(across(c(owned_outright, 
+                                          owned_mortgage,
+                                          rented_real_estate_agent,
+                                          rented_person_not_in_same_household,
+                                          rented_other_landlord_type, 
+                                          other_tenure_type)), na.rm = TRUE),
+    
+    unknown_housing_type = rowSums(across(c(tenure_type_not_stated)), na.rm = TRUE),
+    
+    # Collapse housing suitability
+    overcrowded = rowSums(across(c(extra_bedrooms_1_needed, extra_bedrooms_2_needed,
+                                     extra_bedrooms_3_needed, extra_bedrooms_4plus_needed)), na.rm = TRUE),
+    
+    high_crowded = extra_bedrooms_4plus_needed,
+    
+    not_overcrowded = rowSums(across(c(no_bedrooms_needed_or_spare,
+                                       bedrooms_1_spare, bedrooms_2_spare, 
+                                       bedrooms_3_spare, bedrooms_4plus_spare)), na.rm = TRUE),
+    
+    )
 ```
 
 ```{r}
@@ -162,8 +235,10 @@ socioeconomics_nsw_2021 <- socioeconomics_nsw_2021 %>%
     denominator_edu = pop_size - not_applicable_edu,
     denominator_occup = pop_size - not_applicable_occup,
     denominator_hohd_compo = pop_size - not_applicable_hohd_compo,
-    denominator_hohd_income = pop_size - not_applicable_hohd_income,
+    denominator_income = pop_size - not_applicable_income,
     denominator_labr_stats = pop_size - not_applicable_labr_stats,
+    denominator_housing_type = total_dwellings - tenure_type_not_applicable,
+    denominator_housing_suit = total_dwellings - not_applicable_housing_suit,
     
     # Calculate proportions (education level)
     prop_bachelor_above = if_else(denominator_edu > 0, bachelor_above / denominator_edu, NA_real_),
@@ -179,18 +254,27 @@ socioeconomics_nsw_2021 <- socioeconomics_nsw_2021 %>%
     prop_multi_family = if_else(denominator_hohd_compo > 0, multi_family / denominator_hohd_compo, NA_real_),
     prop_non_family = if_else(denominator_hohd_compo > 0, non_family / denominator_hohd_compo, NA_real_),
     
-    # Calculate proportions (household income)
-    prop_neg_nil_income = if_else(denominator_hohd_income > 0, neg_nil_income / denominator_hohd_income, NA_real_),
-    prop_very_low_income = if_else(denominator_hohd_income > 0, very_low_income / denominator_hohd_income, NA_real_),
-    prop_low_income = if_else(denominator_hohd_income > 0, low_income / denominator_hohd_income, NA_real_),
-    prop_middle_income = if_else(denominator_hohd_income > 0, middle_income / denominator_hohd_income, NA_real_),
-    prop_high_income = if_else(denominator_hohd_income > 0, high_income / denominator_hohd_income, NA_real_),
-    prop_very_high_income = if_else(denominator_hohd_income > 0, very_high_income / denominator_hohd_income, NA_real_),
+    # Calculate proportions (personal income)
+    prop_neg_nil_income = if_else(denominator_income > 0, neg_nil_income / denominator_income, NA_real_),
+    prop_very_low_income = if_else(denominator_income > 0, very_low_income / denominator_income, NA_real_),
+    prop_low_income = if_else(denominator_income > 0, low_income / denominator_income, NA_real_),
+    prop_middle_income = if_else(denominator_income > 0, middle_income / denominator_income, NA_real_),
+    prop_high_income = if_else(denominator_income > 0, high_income / denominator_income, NA_real_),
+    prop_very_high_income = if_else(denominator_income > 0, very_high_income / denominator_income, NA_real_),
     
     # Calculate proportions (labor status)
     prop_employed = if_else(denominator_labr_stats > 0, employed / denominator_labr_stats, NA_real_),
     prop_unemployed = if_else(denominator_labr_stats > 0, unemployed / denominator_labr_stats, NA_real_),
-    prop_not_in_labour_force = if_else(denominator_labr_stats > 0, not_in_labour_force / denominator_labr_stats, NA_real_)
+    prop_not_in_labour_force = if_else(denominator_labr_stats > 0, not_in_labour_force / denominator_labr_stats, NA_real_),
+    
+    # Calculate proportions (housing type)
+    prop_social_housing = if_else(denominator_housing_type  > 0, social_housing / denominator_housing_type, NA_real_),
+    prop_non_social_housing = if_else(denominator_housing_type  > 0, non_social_housing/ denominator_housing_type, NA_real_),
+    
+    # Calculate proportions (housing suitability)
+    prop_overcrowded = if_else(denominator_housing_suit  > 0, overcrowded / denominator_housing_suit, NA_real_),
+    prop_high_crowded = if_else(denominator_housing_suit  > 0, high_crowded / denominator_housing_suit, NA_real_),
+    prop_not_overcrowded = if_else(denominator_housing_suit  > 0, not_overcrowded / denominator_housing_suit, NA_real_)
   )
 ```
 
@@ -201,22 +285,28 @@ socioeconomics_nsw_2021 <- socioeconomics_nsw_2021 %>%
     sa2, in_wslhd, in_metro, pop_size,
     
     # Education level
-    bachelor_above, adv_diploma, high_school_below,
+    bachelor_above, adv_diploma, high_school_below, denominator_edu, unknown_edu,
     
     # Occupation
-    managers_professionals, everyone_else,
+    managers_professionals, everyone_else, denominator_occup, unknown_occup,
     
     # Household composition
     
     one_family, multi_family, non_family,
     
-    # Household income
+    # Personal income
     neg_nil_income, very_low_income, 
     low_income, middle_income, 
-    high_income, very_high_income,
+    high_income, very_high_income, denominator_income, unknown_income,
     
     # Labor force status
     employed, unemployed, not_in_labour_force,
+    
+    # Housing Type
+    social_housing, non_social_housing, denominator_housing_type, unknown_housing_type,
+    
+    # Housing Suitability
+    overcrowded, high_crowded, not_overcrowded, denominator_housing_suit,
     
     # Proportions
     prop_bachelor_above, 
@@ -235,11 +325,18 @@ socioeconomics_nsw_2021 <- socioeconomics_nsw_2021 %>%
     prop_very_high_income,
     prop_employed, 
     prop_unemployed, 
-    prop_not_in_labour_force
+    prop_not_in_labour_force,
+    prop_social_housing,
+    prop_non_social_housing,
+    prop_overcrowded,
+    prop_high_crowded,
+    prop_not_overcrowded
   ) %>%
   
   rename(sa2_name_2021 = "sa2")
+```
 
-# write_csv(socioeconomics_nsw_2021, "socioeconomics_nsw_2021.csv")
+```{r}
+write_csv(socioeconomics_nsw_2021, "socioeconomics_nsw_2021.csv")
 ```
 

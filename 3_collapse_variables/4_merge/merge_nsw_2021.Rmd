@@ -30,7 +30,7 @@ cencus_nsw_2021 <- list(
 ) %>%
   reduce(left_join, by = "sa2_name_2021")
 
-write_csv(cencus_nsw_2021, "cencus_nsw_2021.csv")
+# write_csv(cencus_nsw_2021, "cencus_nsw_2021.csv")
 ```
 
 

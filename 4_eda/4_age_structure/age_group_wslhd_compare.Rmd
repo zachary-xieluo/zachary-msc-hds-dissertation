@@ -1,0 +1,379 @@
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(dplyr)
+library(tidyr)
+library(strayr)
+library(sf)
+library(ggplot2)
+library(scales)
+library(stringr)
+```
+
+
+```{r, echo=TRUE}
+# Read datasets
+age_nsw_compa <- read.csv("age_nsw_compare.csv")
+pop_nsw_compa <- read.csv("pop_size_nsw_compare.csv")
+geo_nsw_2021 <- read.csv("sa2_lga_lhd_nsw_2021.csv")
+
+# Read ABS map datasets
+sa2_map_2021 <- read_absmap("sa22021") %>%
+  filter(state_name_2021 == "New South Wales")
+
+lga_map_2021 <- read_absmap("lga2021") %>%
+  filter(state_name_2021 == "New South Wales")
+```
+
+```{r, echo=TRUE}
+age_nsw_compa <- age_nsw_compa %>%
+  left_join(geo_nsw_2021, by = "sa2_name_2021")
+
+pop_nsw_compa <- pop_nsw_compa %>%
+  left_join(geo_nsw_2021, by = "sa2_name_2021")
+```
+
+
+```{r}
+# Ensure age_group ordering
+age_levels <- c("0_9","10_19","20_29","30_39","40_49","50_59","60_69","70_79","80_89","90_99","100_plus")
+age_nsw_compa <- age_nsw_compa %>%
+  mutate(age_group = factor(age_group, levels = age_levels, ordered = TRUE))
+```
+
+
+```{r}
+# Filter WSLHD
+pop_wslhd_compa <- pop_nsw_compa %>%
+  filter(in_wslhd_2021 == 1)
+
+age_wslhd_compa <- age_nsw_compa %>%
+  filter(in_wslhd_2021 == 1)
+```
+
+
+```{r}
+# 4) Summarise WSLHD totals by age_group
+age_wslhd_summary <- age_nsw_compa %>%
+  group_by(age_group) %>%
+  summarise(
+    n2011_as21 = sum(n2011_as21, na.rm = TRUE),
+    n_2021     = sum(n_2021, na.rm = TRUE),
+    abs_change = n_2021 - n2011_as21,
+    growth_rate = if_else(n2011_as21 > 0, abs_change / n2011_as21, NA_real_),
+    .groups = "drop"
+  ) %>%
+  arrange(age_group)
+```
+
+
+```{r}
+age_wslhd_summary_long <- age_wslhd_summary %>%
+  select(age_group, n2011_as21, n_2021) %>%
+  pivot_longer(cols = c(n2011_as21, n_2021),
+                      names_to = "year", values_to = "count") %>%
+  mutate(year = dplyr::recode(year,
+                              n2011_as21 = "2011 as-21",
+                              n_2021     = "2021"))
+
+ggplot(age_wslhd_summary_long, aes(x = age_group, y = count, fill = year)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.7) +
+  geom_text(aes(label = scales::comma(count)),
+            position = position_dodge(width = 0.7),
+            vjust = -0.25, size = 3) +
+  labs(
+    title = "WSLHD: Age distribution (2011 vs 2021)",
+    x = "Age group", y = "Population", fill = NULL
+  ) +
+  scale_y_continuous(labels = comma, expand = expansion(mult = c(0.02, 0.08))) +
+  theme_minimal(base_size = 12)
+```
+
+```{r, include=FALSE}
+age_wslhd_4g <- age_wslhd_compa %>%
+  mutate(
+    age_start = as.integer(str_extract(as.character(age_group), "^\\d+")),
+    age_group4 = case_when(
+      age_start < 20 ~ "0_19",
+      age_start < 40 ~ "20_39",
+      age_start < 60 ~ "40_59",
+      TRUE ~ "60_plus"
+    )
+  ) %>%
+  group_by(age_group4) %>%
+  summarise(
+    n2011_as21 = sum(n2011_as21, na.rm = TRUE),
+    n_2021     = sum(n_2021, na.rm = TRUE),
+    abs_change = n_2021 - n2011_as21,
+    growth_rate = if_else(n2011_as21 > 0, abs_change / n2011_as21, NA_real_),
+    .groups = "drop"
+  ) %>%
+  mutate(age_group4 = factor(age_group4, levels = c("0_19","20_39","40_59","60_plus"), ordered = TRUE))
+```
+
+
+```{r}
+age_wslhd_4g_long <- age_wslhd_4g %>%
+  select(age_group4, n2011_as21, n_2021) %>%
+  pivot_longer(cols = c(n2011_as21, n_2021),
+               names_to = "year", values_to = "count") %>%
+  mutate(
+    year = recode(year,
+                  n2011_as21 = "2011",
+                  n_2021     = "2021"),
+    age_group4 = factor(age_group4, levels = c("0_19","20_39","40_59","60_plus"), ordered = TRUE)
+  )
+
+
+labels_2021 <- age_wslhd_4g_long %>%
+  filter(year == "2021") %>%
+  left_join(age_wslhd_4g %>% select(age_group4, growth_rate), by = "age_group4") %>%
+  mutate(gr_label = ifelse(is.na(growth_rate), "NA", percent(growth_rate, accuracy = 0.1)))
+
+ggplot(age_wslhd_4g_long, aes(x = age_group4, y = count, fill = year)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.7) +
+
+  geom_text(aes(label = comma(count)),
+            position = position_dodge(width = 0.7),
+            vjust = -0.25, size = 3) +
+
+  geom_text(
+    data = labels_2021,
+    aes(label = gr_label),
+    position = position_dodge(width = 0.7),
+    vjust = -1.2,   
+    size = 3,
+    color = "black"
+  ) +
+  labs(
+    title = "WSLHD: Age distribution (2011 vs 2021)",
+    x = "Age group", y = "Population", fill = NULL
+  ) +
+  scale_y_continuous(labels = comma, expand = expansion(mult = c(0.02, 0.12))) +
+  theme_minimal(base_size = 12)
+```
+
+```{r}
+wslhd_lgas <- c("Blacktown","Parramatta","Cumberland","The Hills Shire")
+
+age_wslhd_lga_4g <- age_wslhd_compa %>%
+  filter(lga_name_2021 %in% wslhd_lgas) %>%
+  mutate(
+    age_group4 = case_when(
+      age_group %in% c("0_9","10_19") ~ "0_19",
+      age_group %in% c("20_29","30_39") ~ "20_39",
+      age_group %in% c("40_49","50_59") ~ "40_59",
+      age_group %in% c("60_69","70_79","80_89","90_99","100_plus") ~ "60_plus",
+      TRUE ~ NA_character_
+    ),
+    age_group4 = factor(age_group4, levels = c("0_19","20_39","40_59","60_plus"), ordered = TRUE)
+  ) %>%
+  group_by(lga_name_2021, age_group4) %>%
+  summarise(
+    n2011_as21 = sum(n2011_as21, na.rm = TRUE),
+    n_2021     = sum(n_2021,     na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    abs_change  = n_2021 - n2011_as21,
+    growth_rate = if_else(n2011_as21 > 0, abs_change / n2011_as21, NA_real_)
+  )
+
+lga_order <- age_wslhd_lga_4g %>%
+  group_by(lga_name_2021) %>%
+  summarise(total_change = sum(abs_change, na.rm = TRUE), .groups = "drop") %>%
+  arrange(desc(total_change)) %>%
+  pull(lga_name_2021)
+
+age_wslhd_lga_4g <- age_wslhd_lga_4g %>%
+  mutate(lga_name_2021 = factor(lga_name_2021, levels = lga_order))
+
+age_wslhd_lga_4g_long <- age_wslhd_lga_4g %>%
+  select(lga_name_2021, age_group4, n2011_as21, n_2021, growth_rate) %>%
+  pivot_longer(c(n2011_as21, n_2021), names_to = "year", values_to = "count") %>%
+  mutate(year = recode(year, n2011_as21 = "2011", n_2021 = "2021"))
+
+labels_2021 <- age_wslhd_lga_4g_long %>%
+  filter(year == "2021") %>%
+  mutate(gr_label = ifelse(is.na(growth_rate), "NA", percent(growth_rate, accuracy = 0.1)))
+```
+
+```{r}
+ggplot(age_wslhd_lga_4g_long, aes(x = age_group4, y = count, fill = year)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.7) +
+
+  geom_text(aes(label = comma(count)),
+            position = position_dodge(width = 0.7),
+            vjust = -0.25, size = 3) +
+
+  geom_text(
+    data = labels_2021,
+    aes(label = gr_label),
+    position = position_dodge(width = 0.7),
+    vjust = -1.2, size = 3
+  ) +
+  facet_wrap(~ lga_name_2021, ncol = 2) +  
+  labs(
+    title = "WSLHD: Age distribution by LGA (2011 vs 2021)",
+    x = "Age Group", y = "Population", fill = NULL
+  ) +
+  scale_x_discrete(labels = c("0_19"="0–19","20_39"="20–39","40_59"="40–59","60_plus"="60+")) +
+  scale_y_continuous(labels = comma, expand = expansion(mult = c(0.02, 0.12))) +
+  theme_minimal(base_size = 12)
+```
+
+```{r, include=FALSE}
+age_sa2_4g <- age_wslhd_compa %>%
+  mutate(
+    age_group4 = case_when(
+      age_group %in% c("0_9","10_19") ~ "0_19",
+      age_group %in% c("20_29","30_39") ~ "20_39",
+      age_group %in% c("40_49","50_59") ~ "40_59",
+      age_group %in% c("60_69","70_79","80_89","90_99","100_plus") ~ "60_plus",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  filter(!is.na(age_group4)) %>%
+  group_by(sa2_name_2021, age_group4) %>%
+  summarise(
+    n2011_as21 = sum(n2011_as21, na.rm = TRUE),
+    n_2021     = sum(n_2021,     na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    abs_change  = n_2021 - n2011_as21,
+    growth_rate = if_else(n2011_as21 > 0, abs_change / n2011_as21, NA_real_)
+  )
+```
+
+```{r}
+# Flag NA for non-residuals
+age_sa2_4g_clean <- age_sa2_4g %>%
+  mutate(
+    growth_rate = ifelse(
+      sa2_name_2021 %in% c("Prospect Reservoir",
+                           "Smithfield Industrial",
+                           "Yennora Industrial",
+                           "Rookwood Cemetery"),
+      NA_real_,
+      growth_rate
+    )
+  )
+```
+
+
+```{r}
+sa2_keep <- unique(age_sa2_4g_clean$sa2_name_2021)
+
+map_age_wslhd_comp_4g <- sa2_map_2021 %>%
+  filter(sa2_name_2021 %in% sa2_keep) %>%
+  select(sa2_name_2021, geometry) %>%
+  left_join(age_sa2_4g_clean, by = "sa2_name_2021")
+```
+
+```{r}
+lga_wslhd_2021 <- lga_map_2021 %>%
+  filter(lga_name_2021 %in% wslhd_lgas) %>%
+  st_transform(crs = st_crs(map_age_wslhd_comp_4g))
+```
+
+```{r}
+pop_fill_scale <- function() {
+  scale_fill_viridis_c(
+    option = "plasma",
+    name   = "Population Growth Rate",
+    labels = scales::percent,
+    oob    = scales::squish,     
+    na.value = "grey"       
+  )
+}
+
+ggplot(map_age_wslhd_comp_4g) +
+  geom_sf(aes(fill = growth_rate), color = "black", linewidth = 0.2) +
+  geom_sf(data = lga_wslhd_2021, fill = NA, color = "darkred", linewidth = 0.8) +
+  pop_fill_scale() +
+  facet_wrap(
+    ~ factor(age_group4,
+             levels = c("0_19","20_39","40_59","60_plus"),
+             labels = c("0–19","20–39","40–59","60+")),
+    ncol = 2
+  ) +
+  labs(
+    title   = "WSLHD: SA2 Growth Rate by Age Group (2011→2021, 4 bins)",
+    caption = "Grey areas are Prospect Reservoir, Smithfield Industrial, Yennora Industrial and Rookwood Cemetery"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid  = element_blank(),
+    axis.text   = element_blank(),
+    axis.ticks  = element_blank(),
+    axis.title  = element_blank(),
+    strip.text  = element_text(face = "bold")
+  )
+```
+
+```{r}
+pop_wslhd_lga <- pop_wslhd_compa %>%
+  filter(lga_name_2021 %in% wslhd_lgas) %>%
+  group_by(lga_name_2021) %>%
+  summarise(
+    pop2011_as21 = sum(pop2011_as21, na.rm = TRUE),
+    pop_2021     = sum(pop_2021,     na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    abs_change  = pop_2021 - pop2011_as21,
+    growth_rate = if_else(pop2011_as21 > 0, abs_change / pop2011_as21, NA_real_)
+  )
+
+pop_wslhd_lga_order <- pop_wslhd_lga %>%
+  arrange(desc(pop_2021)) %>%
+  pull(lga_name_2021)
+
+pop_wslhd_lga <- pop_wslhd_lga %>%
+  mutate(lga_name_2021 = factor(lga_name_2021, levels = lga_order))
+
+pop_wslhd_lga_long <- pop_wslhd_lga %>%
+  select(lga_name_2021, pop2011_as21, pop_2021, growth_rate) %>%
+  pivot_longer(c(pop2011_as21, pop_2021),
+               names_to = "year", values_to = "count") %>%
+  mutate(
+    year = recode(year,
+                  pop2011_as21 = "2011",
+                  pop_2021     = "2021")
+  )
+
+labels_lga_2021 <- pop_wslhd_lga_long %>%
+  filter(year == "2021") %>%
+  mutate(gr_label = ifelse(is.na(growth_rate), "NA",
+                           percent(growth_rate, accuracy = 0.1)))
+```
+
+```{r}
+ggplot(pop_wslhd_lga_long, aes(x = year, y = count, fill = year)) +
+  geom_col(width = 0.3) +
+  geom_text(aes(label = comma(count)),
+            vjust = -0.25, size = 3) +
+  geom_text(
+    data = labels_lga_2021,
+    aes(label = gr_label),
+    vjust = -1.5, size = 3, color = "black"
+  ) +
+  facet_wrap(~ lga_name_2021, ncol = 2) +
+  labs(
+    title = "Population by LGA: 2011 vs 2021",
+    x = NULL, y = "Population", fill = NULL
+  ) +
+  scale_x_discrete(labels = c("pop2011_as21"="2011","pop_2021"="2021")) +
+  scale_y_continuous(labels = comma, expand = expansion(mult = c(0.02, 0.12))) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.major.x = element_blank(),
+    axis.text.x = element_text(size = 10),
+    strip.text  = element_text(face = "bold")
+  )
+```
+

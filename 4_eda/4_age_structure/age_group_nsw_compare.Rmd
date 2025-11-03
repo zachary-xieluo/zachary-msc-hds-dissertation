@@ -1,0 +1,265 @@
+---
+author: "Zachary Xie"
+date: "2025-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(readr)
+library(stringr)
+library(tidyr)
+```
+
+```{r}
+# --- Read datasets ---
+# sa2 mapping list
+nsw_sa2_mapping <- read_csv("nsw_map_list_from_2011.csv")
+
+# 2011 age group
+age_nsw_2011 <- read_csv("age_group_nsw_2011.csv") %>%
+  rename(sa2_name_2011 = sa2)
+
+# 2021 age group
+age_nsw_2021 <- read_csv("age_group_nsw_2021.csv") %>%
+  rename(sa2_name_2021 = sa2)
+
+# Read NSW 2021 SA2 data
+geo_nsw_2021 <- read.csv("sa2_lga_lhd_nsw_2021.csv")
+
+# Read WSLHD 2021 SA2 data
+geo_wslhd_2021 <- read.csv("sa2_lga_wslhd_2021.csv")
+
+# Define the NSW metropolitan list
+metro_nsw_lhd <- c("Nepean Blue Mountains",
+                   "Northern Sydney",
+                   "South Eastern Sydney",
+                   "South Western Sydney",
+                   "Sydney","Western Sydney")
+
+# Filter metropolitan 
+geo_metro_2021 <- geo_nsw_2021 %>%
+  filter(nsw_lhd_name %in% metro_nsw_lhd)
+```
+
+```{r}
+names(age_nsw_2021)
+names(age_nsw_2011)
+```
+
+```{r}
+# Unify format
+age_nsw_2021 <- age_nsw_2021 %>%
+  rename(
+    `age_0_9_2021` = `0-9 years`,
+    `age_10_19_2021` = `10-19 years`,
+    `age_20_29_2021` = `20-29 years`,
+    `age_30_39_2021` = `30-39 years`,
+    `age_40_49_2021` = `40-49 years`,
+    `age_50_59_2021` = `50-59 years`,
+    `age_60_69_2021` = `60-69 years`,
+    `age_70_79_2021` = `70-79 years`,
+    `age_80_89_2021` = `80-89 years`,
+    `age_90_99_2021` = `90-99 years`,
+    `age_100_plus_2021` = `100 years and over`
+  )
+
+age_nsw_2011 <- age_nsw_2011 %>%
+  rename(
+    `age_0_9_2011` = `0-9 years`,
+    `age_10_19_2011` = `10-19 years`,
+    `age_20_29_2011` = `20-29 years`,
+    `age_30_39_2011` = `30-39 years`,
+    `age_40_49_2011` = `40-49 years`,
+    `age_50_59_2011` = `50-59 years`,
+    `age_60_69_2011` = `60-69 years`,
+    `age_70_79_2011` = `70-79 years`,
+    `age_80_89_2011` = `80-89 years`,
+    `age_90_99_2011` = `90-99 years`,
+    `age_100_plus_2011` = `100 years and over`
+  )
+```
+
+```{r}
+# Flag WSLHD and metropolitan areas in 2021 data
+age_nsw_2021 <- age_nsw_2021 %>%
+  mutate(in_wslhd_2021 = if_else(sa2_name_2021 %in% geo_wslhd_2021$sa2_name_2021, 1, 0)) %>%
+  mutate(in_metro_2021 = if_else(sa2_name_2021 %in% geo_metro_2021$sa2_name_2021, 1, 0))
+
+age_wslhd_2021 <- age_nsw_2021 %>%
+  filter(in_wslhd_2021 == 1)
+
+age_metro_2021 <- age_nsw_2021 %>%
+  filter(in_metro_2021 == 1)
+```
+
+
+```{r}
+# --- 0) Helpers: standardize SA2 strings for join keys (keep 2021 names as-is for display) ---
+clean_sa2 <- function(x) {
+  x %>%
+    str_replace_all("–|—", "-") %>%
+    str_replace_all("[ ]*-[ ]*", " - ") %>%
+    str_squish() %>%
+    str_to_lower()
+}
+
+# --- 1) Add keys to geo & age tables ---
+geo_nsw_2021  <- geo_nsw_2021  %>% mutate(key_2021 = clean_sa2(sa2_name_2021))
+geo_wslhd_2021<- geo_wslhd_2021%>% mutate(key_2021 = clean_sa2(sa2_name_2021))
+age_nsw_2011  <- age_nsw_2011  %>% mutate(key_2011 = clean_sa2(sa2_name_2011))
+age_nsw_2021  <- age_nsw_2021  %>% mutate(key_2021 = clean_sa2(sa2_name_2021))
+
+# --- 2) Mapping with keys ---
+nsw_sa2_mapping <- nsw_sa2_mapping %>%
+  mutate(
+    sa2_name_2011 = str_squish(sa2_name_2011),
+    sa2_name_2021 = str_squish(sa2_name_2021),
+    key_2011 = clean_sa2(sa2_name_2011),
+    key_2021 = clean_sa2(sa2_name_2021)
+  )
+
+# non-spatial keys
+k_noaddr <- clean_sa2("No usual address (NSW)")
+k_moss   <- clean_sa2("Migratory - Offshore - Shipping (NSW)")
+
+# --- 2.1) lookups (BOTH 2011 & 2021) ---
+lookup_2011 <- age_nsw_2011 %>%
+  select(sa2_name_2011, key_2011) %>%
+  distinct()
+
+lookup_2021 <- bind_rows(
+  age_nsw_2021 %>% select(sa2_name_2021, key_2021),
+  geo_nsw_2021 %>% select(sa2_name_2021, key_2021)
+) %>%
+  distinct()
+
+# ensure two non-spatial keys exist in lookup_2021
+lookup_2021 <- lookup_2021 %>%
+  bind_rows(tibble(
+    key_2021 = c(k_noaddr, k_moss),
+    sa2_name_2021 = c("No usual address (NSW)",
+                      "Migratory - Offshore - Shipping (NSW)")
+  )) %>%
+  distinct(key_2021, .keep_all = TRUE)
+
+# helpers (single, final versions)
+name_2011_by_key <- function(k) {
+  out <- lookup_2011 %>% filter(key_2011 == k) %>% slice(1) %>% pull(sa2_name_2011)
+  if (length(out) == 0) NA_character_ else out
+}
+name_2021_by_key <- function(k) {
+  out <- lookup_2021 %>% filter(key_2021 == k) %>% slice(1) %>% pull(sa2_name_2021)
+  if (length(out) == 0) NA_character_ else out
+}
+
+# --- 2.2) patch non-spatial rows into mapping (self-map, weight=1) ---
+patch_rows <- tibble(
+  sa2_name_2011 = c(name_2011_by_key(k_noaddr), name_2011_by_key(k_moss)),
+  sa2_name_2021 = c(name_2021_by_key(k_noaddr), name_2021_by_key(k_moss)),
+  weight_norm_from_2011 = 1,
+  key_2011 = c(k_noaddr, k_moss),
+  key_2021 = c(k_noaddr, k_moss)
+)
+
+if (any(is.na(patch_rows$sa2_name_2021)) || any(is.na(patch_rows$sa2_name_2011))) {
+  stop("Failed to resolve names for non-spatial SA2s in patch_rows.")
+}
+
+nsw_sa2_mapping_fix <- nsw_sa2_mapping %>%
+  anti_join(patch_rows %>% select(key_2011, key_2021), by = c("key_2011","key_2021")) %>%
+  bind_rows(patch_rows)
+
+# --- 3) Pivot to long (underscore style like 0_9, 100_plus) ---
+age_2011_long <- age_nsw_2011 %>%
+  pivot_longer(
+    cols = matches("^age_.*_2011$"),
+    names_to = "age_group_raw",
+    values_to = "n_2011"
+  ) %>%
+  mutate(
+    age_group = age_group_raw %>% str_remove("^age_") %>% str_remove("_2011")
+  ) %>%
+  select(sa2_name_2011, key_2011, age_group, n_2011)
+
+age_2021_long <- age_nsw_2021 %>%
+  pivot_longer(
+    cols = matches("^age_.*_2021$"),
+    names_to = "age_group_raw",
+    values_to = "n_2021"
+  ) %>%
+  mutate(
+    age_group = age_group_raw %>% str_remove("^age_") %>% str_remove("_2021")
+  ) %>%
+  select(sa2_name_2021, key_2021, age_group, n_2021)
+
+# --- 4) Allocate 2011 counts to 2021 SA2 using mapping weights, per age group ---
+age_pairs <- nsw_sa2_mapping_fix %>%
+  select(key_2011, key_2021, weight_norm_from_2011) %>%
+  right_join(age_2011_long, by = "key_2011") %>%     # keep all 2011 age rows
+  left_join(lookup_2021, by = "key_2021") %>%        # bring authoritative 2021 names
+  mutate(
+    n_2011 = coalesce(n_2011, 0),
+    weight_norm_from_2011 = coalesce(weight_norm_from_2011, 0),
+    contrib_2011_to_2021 = n_2011 * weight_norm_from_2011
+  )
+
+age2011_as21 <- age_pairs %>%
+  group_by(sa2_name_2021, key_2021, age_group) %>%
+  summarise(n2011_as21 = sum(contrib_2011_to_2021, na.rm = TRUE), .groups = "drop")
+
+# --- 5) Combine with 2021 counts and compute changes ---
+age_sa2_growth <- age_2021_long %>%
+  select(sa2_name_2021, key_2021, age_group, n_2021) %>%
+  full_join(age2011_as21, by = c("sa2_name_2021","key_2021","age_group")) %>%
+  mutate(
+    n_2021      = coalesce(n_2021, 0),
+    n2011_as21  = coalesce(n2011_as21, 0),
+    abs_change  = n_2021 - n2011_as21,
+    growth_rate = if_else(n2011_as21 > 0, abs_change / n2011_as21, NA_real_)
+  )
+
+# (b) Check a few rows
+head(age_sa2_growth)
+```
+
+
+```{r}
+flags_2021 <- geo_nsw_2021 %>%
+    mutate(
+      in_wslhd_2021 = as.integer(sa2_name_2021 %in% geo_wslhd_2021$sa2_name_2021),
+      in_metro_2021 = as.integer(nsw_lhd_name %in% metro_nsw_lhd)
+    ) %>%
+    select(sa2_name_2021, in_wslhd_2021, in_metro_2021) %>%
+    distinct(sa2_name_2021, .keep_all = TRUE)
+
+age_sa2_growth <- age_sa2_growth %>%
+  left_join(flags_2021, by = "sa2_name_2021") %>%
+  mutate(
+    in_wslhd_2021 = if_else(is.na(in_wslhd_2021), 0L, as.integer(in_wslhd_2021)),
+    in_metro_2021 = if_else(is.na(in_metro_2021), 0L, as.integer(in_metro_2021))
+  )
+
+```
+
+
+
+```{r}
+# totals should be close (2011 raw vs reallocated, including non-spatial SA2)
+total_2011_raw  <- age_2011_long  %>% summarise(sum = sum(n_2011,      na.rm = TRUE)) %>% pull(sum)
+total_2011_as21 <- age2011_as21   %>% summarise(sum = sum(n2011_as21,  na.rm = TRUE)) %>% pull(sum)
+c(total_2011_raw = total_2011_raw, total_2011_as21 = total_2011_as21)
+
+```
+
+```{r}
+age_sa2_growth <- age_sa2_growth %>%
+  select(-key_2021)
+
+# write.csv(age_sa2_growth , "age_nsw_compare.csv", row.names = FALSE)
+```
+

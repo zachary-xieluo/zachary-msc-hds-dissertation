@@ -1,0 +1,418 @@
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(readr)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(ggplot2)
+library(forcats)
+library(scales)
+```
+
+```{r, include=FALSE}
+# Read datasets (variables from prepossessing folder)
+pop_nsw_2021 <- read.csv("pop_size_nsw_2021.csv")
+cob_nsw_2021 <- read.csv("cob_4level_nsw_2021.csv") %>%
+  rename(sa2_name_2021 = sa2)
+lang_nsw_2021 <- read.csv("lang_4level_nsw_2021.csv") %>%
+  rename(sa2_name_2021 = sa2)
+sa2_lga_lhd_nsw_2021 <- read.csv("sa2_lga_lhd_nsw_2021.csv")
+```
+
+```{r, include=FALSE}
+names(cob_nsw_2021)
+names(lang_nsw_2021)
+```
+
+```{r, include=FALSE}
+# Clean cob dataset
+cob_nsw_2021 <- cob_nsw_2021 %>%
+  rename_with(~ tolower(.x)  %>%
+    str_replace_all("[._/]+", "_")  %>%
+    str_replace_all("^_+|_+$", "")) %>%
+  rename(not_stated_cob = not_stated,
+         niue_cob = niue,
+         inadeq_desc_cob = inadequately_described)
+```
+
+```{r, include=FALSE}
+aus_cols <- c("australia_includes_external_territories_nfd",
+              "australia",
+              "norfolk_island",
+              "australian_external_territories_nec")
+
+cob_nsw_2021 <- cob_nsw_2021 %>%
+  mutate(australia_total = rowSums(across(any_of(aus_cols)), na.rm = TRUE))
+
+# Exclude numerical columns (not included in overseas summation)
+overseas_prot_cols <- c("australia_total",
+                        
+                        "australia_includes_external_territories_nfd",
+                        "australia",
+                        "norfolk_island",
+                        "australian_external_territories_nec",
+                        
+                        "overseas", 
+                        
+                        "not_stated_cob")
+
+overseas_cols <- cob_nsw_2021 %>%
+  select(where(is.numeric)) %>%
+  names() %>%
+  setdiff(overseas_prot_cols)
+
+cob_nsw_2021 <- cob_nsw_2021 %>%
+  mutate(overseas = rowSums(across(all_of(overseas_cols)), na.rm = TRUE))
+```
+
+
+```{r, include=FALSE}
+# Clean lang dataset
+lang_nsw_2021 <- lang_nsw_2021 %>%
+  rename_with(~ tolower(.x)  %>%
+    str_replace_all("[._/]+", "_")  %>%
+    str_replace_all("^_+|_+$", "")) %>%
+    rename(not_stated_lang = not_stated,
+           niue_lang = niue,
+           inadeq_desc_lang = inadequately_described)
+  
+# Exclude numerical columns (not included in non-english summation)
+lang_prot_cols <- c("english", 
+                    "non_english", 
+                    "not_stated_lang")
+
+non_english_cols <- lang_nsw_2021 %>%
+  select(where(is.numeric)) %>%
+  names() %>%
+  setdiff(lang_prot_cols)
+
+lang_nsw_2021 <- lang_nsw_2021 %>%
+  mutate(non_english = rowSums(across(all_of(non_english_cols)), na.rm = TRUE))
+```
+
+```{r, include=FALSE}
+cd_nsw_2021 <- pop_nsw_2021 %>%
+  left_join(cob_nsw_2021, by = "sa2_name_2021") %>%
+  left_join(lang_nsw_2021, by = "sa2_name_2021") %>%
+  left_join(sa2_lga_lhd_nsw_2021, by = "sa2_name_2021")
+```
+
+
+```{r, include=FALSE}
+cob_aus_osea_wslhd_2021 <- cd_nsw_2021 %>%
+  filter(in_wslhd == 1) %>%
+  filter(lga_name_2021 %in% c("Blacktown", "Cumberland", "Parramatta", "The Hills Shire")) %>%
+  select(sa2_name_2021, lga_name_2021, pop_size, australia_total, overseas, not_stated_cob)
+
+cob_lga_wslhd <- cob_aus_osea_wslhd_2021 %>%
+  group_by(lga_name_2021) %>%
+  summarise(
+    pop_total = sum(pop_size, na.rm = TRUE),
+    australia_total = sum(australia_total, na.rm = TRUE),
+    overseas  = sum(overseas,  na.rm = TRUE),
+    not_stated_cob  = sum(not_stated_cob,  na.rm = TRUE),
+    .groups = "drop"
+  )
+
+cob_lga_wslhd_long <- cob_lga_wslhd %>%
+  pivot_longer(
+    cols = c(australia_total, overseas, not_stated_cob),
+    names_to = "origin",
+    values_to = "count"
+  ) %>%
+  mutate(
+    origin = factor(origin, levels = c("australia_total", "overseas", "not_stated_cob"),
+                    labels = c("Australia", "Overseas", "Not Stated")),
+    prop = count / pop_total
+  )
+
+cob_lga_wslhd_order <- cob_lga_wslhd_long %>%
+  filter(origin == "Overseas") %>%
+  arrange(desc(prop)) %>%
+  pull(lga_name_2021)
+
+cob_lga_wslhd_long <- cob_lga_wslhd_long %>%
+  mutate(lga_name_2021 = factor(lga_name_2021, levels = cob_lga_wslhd_order))
+
+cob_lga_wslhd_lab <- cob_lga_wslhd_long %>%
+  mutate(
+    prop  = count / pop_total,
+    label = 
+      paste0(comma(count), "\n", percent(prop, accuracy = 0.1)))
+```
+
+```{r, echo=FALSE}
+ggplot(cob_lga_wslhd_lab, aes(x = lga_name_2021, y = prop, fill = origin)) +
+  geom_col(width = 0.5) +
+  geom_text(aes(label = label),
+            position = position_stack(vjust = 0.5),
+            size = 3, lineheight = 0.9, color = "black") +
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  scale_fill_manual(values = c("Australia"  = "#F8766D",
+                               "Overseas"   = "#00BFC4",
+                               "Not Stated" = "grey70")) +
+  labs(x = NULL, y = "Proportion",
+       fill = NULL,
+       title = "Australia vs Overseas — Proportion by LGA (WSLHD, 2021)") +
+  theme_minimal(base_size = 12) +
+  theme(axis.text.x = element_text(),
+        legend.position = "bottom")
+```
+
+```{r, include=FALSE}
+cob_wslhd_2021 <- cd_nsw_2021 %>%
+  filter(in_wslhd == 1)
+  
+overseas_tot <- cob_wslhd_2021 %>%
+  summarise(
+    across(all_of(overseas_cols), ~ sum(.x, na.rm = TRUE)),
+    pop_total = sum(pop_size, na.rm = TRUE) 
+  ) %>%
+  pivot_longer(
+    cols = all_of(overseas_cols),         
+    names_to = "country",
+    values_to = "count"
+  ) %>%
+  mutate(
+    prop = count / pop_total,            
+    country_label = country %>% str_replace_all("_", " ") %>% str_to_title()
+  ) %>%
+  select(-pop_total) 
+
+overseas_tot <- overseas_tot %>% 
+  slice_max(order_by = count, n = 10, with_ties = FALSE)
+```
+
+```{r, echo=FALSE}
+ggplot(overseas_tot, aes(x = reorder(country_label, count), y = count)) +
+  geom_col(width = 0.7) +
+  geom_text(aes(label = paste0(comma(count), " (", percent(prop, accuracy = 0.1), ")")),
+            hjust = -0.05, size = 2) +
+  coord_flip() +
+  scale_y_continuous(labels = comma, expand = expansion(mult = c(0, 0.12))) +
+  labs(x = NULL, y = "Count",
+       title = "Top 10 - Overseas Country of Birth (WSLHD, 2021)") +
+  theme_minimal(base_size = 12)
+```
+
+```{r, include=FALSE}
+lang_eng_wslhd_2021 <- cd_nsw_2021 %>%
+  filter(in_wslhd == 1) %>%
+  filter(lga_name_2021 %in% c("Blacktown", "Cumberland", "Parramatta", "The Hills Shire")) %>%
+  select(sa2_name_2021, lga_name_2021, pop_size, english, non_english, not_stated_lang)
+
+lang_lga_wslhd <- lang_eng_wslhd_2021 %>%
+  group_by(lga_name_2021) %>%
+  summarise(
+    pop_total = sum(pop_size, na.rm = TRUE),
+    english = sum(english, na.rm = TRUE),
+    non_english  = sum(non_english,  na.rm = TRUE),
+    not_stated_lang  = sum(not_stated_lang,  na.rm = TRUE),
+    .groups = "drop"
+  )
+
+lang_lga_wslhd_long <- lang_lga_wslhd %>%
+  pivot_longer(
+    cols = c(english, non_english, not_stated_lang),
+    names_to = "origin",
+    values_to = "count"
+  ) %>%
+  mutate(
+    origin = factor(origin, levels = c("english", "non_english","not_stated_lang"),
+                    labels = c("English", "Non-English", "Not Stated")),
+    prop = count / pop_total
+  )
+
+lang_lga_wslhd_order <- lang_lga_wslhd_long %>%
+  filter(origin == "Non-English") %>%
+  arrange(desc(prop)) %>%
+  pull(lga_name_2021)
+
+lang_lga_wslhd_long <- lang_lga_wslhd_long %>%
+  mutate(lga_name_2021 = factor(lga_name_2021, levels = lang_lga_wslhd_order))
+
+lang_lga_wslhd_lab <- lang_lga_wslhd_long %>%
+  mutate(
+    prop  = count / pop_total,
+    label = 
+      paste0(comma(count), "\n", percent(prop, accuracy = 0.1)))
+```
+
+```{r, echo=FALSE}
+ggplot(lang_lga_wslhd_lab, aes(x = lga_name_2021, y = prop, fill = origin)) +
+  geom_col(width = 0.5) +
+  geom_text(aes(label = label),
+            position = position_stack(vjust = 0.5),
+            size = 3, lineheight = 0.9, color = "black") +
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  scale_fill_manual(values = c("English"  = "#F8766D",
+                               "Non-English"   = "#00BFC4",
+                               "Not Stated" = "grey70")) +
+  labs(x = NULL, y = "Proportion",
+       fill = NULL,
+       title = "English vs Non-English Speaking at Home — Proportion by LGA (WSLHD, 2021)") +
+  theme_minimal(base_size = 12) +
+  theme(axis.text.x = element_text(),
+        legend.position = "bottom")
+```
+
+```{r, include=FALSE}
+lang_wslhd_2021 <- cd_nsw_2021 %>%
+  filter(in_wslhd == 1)
+  
+non_english_tot <- lang_wslhd_2021 %>%
+  summarise(
+    across(all_of(non_english_cols), ~ sum(.x, na.rm = TRUE)),
+    pop_total = sum(pop_size, na.rm = TRUE) 
+  ) %>%
+  pivot_longer(
+    cols = all_of(non_english_cols),         
+    names_to = "language",
+    values_to = "count"
+  ) %>%
+  mutate(
+    prop = count / pop_total,            
+    language_label = language %>% str_replace_all("_", " ") %>% str_to_title()
+  ) %>%
+  select(-pop_total) 
+
+non_english_tot <- non_english_tot %>% 
+  slice_max(order_by = count, n = 10, with_ties = FALSE)
+```
+
+```{r, echo=FALSE}
+ggplot(non_english_tot, aes(x = reorder(language_label, count), y = count)) +
+  geom_col(width = 0.7) +
+  geom_text(aes(label = paste0(comma(count), " (", percent(prop, accuracy = 0.1), ")")),
+            hjust = -0.05, size = 2) +
+  coord_flip() +
+  scale_y_continuous(labels = comma, expand = expansion(mult = c(0, 0.12))) +
+  labs(x = NULL, y = "Count",
+       title = "Top 10 - Non-English Speaking at Home (WSLHD, 2021)") +
+  theme_minimal(base_size = 12)
+```
+
+
+```{r, include=FALSE}
+cob_aus_osea_metro_2021 <- cd_nsw_2021 %>%
+  filter(in_metro == 1) %>%
+  select(sa2_name_2021, nsw_lhd_name, pop_size, australia_total, overseas, not_stated_cob)
+
+cob_metro <- cob_aus_osea_metro_2021 %>%
+  group_by(nsw_lhd_name) %>%
+  summarise(
+    pop_total = sum(pop_size, na.rm = TRUE),
+    australia_total = sum(australia_total, na.rm = TRUE),
+    overseas  = sum(overseas,  na.rm = TRUE),
+    not_stated_cob  = sum(not_stated_cob,  na.rm = TRUE),
+    .groups = "drop"
+  )
+
+cob_metro_long <- cob_metro %>%
+  pivot_longer(
+    cols = c(australia_total, overseas, not_stated_cob),
+    names_to = "origin",
+    values_to = "count"
+  ) %>%
+  mutate(
+    origin = factor(origin, levels = c("australia_total", "overseas", "not_stated_cob"),
+                    labels = c("Australia", "Overseas", "Not Stated")),
+    prop = count / pop_total
+  )
+
+cob_metro_order <- cob_metro_long %>%
+  filter(origin == "Overseas") %>%
+  arrange(desc(prop)) %>%
+  pull(nsw_lhd_name)
+
+cob_metro_long <- cob_metro_long %>%
+  mutate(nsw_lhd_name = factor(nsw_lhd_name, levels = cob_metro_order))
+
+cob_metro_lab <- cob_metro_long %>%
+  mutate(
+    prop  = count / pop_total,
+    label = 
+      paste0(comma(count), "\n", percent(prop, accuracy = 0.1)))
+```
+
+```{r, echo=FALSE}
+ggplot(cob_metro_lab, aes(x = nsw_lhd_name, y = prop, fill = origin)) +
+  geom_col(width = 0.5) +
+  geom_text(aes(label = label),
+            position = position_stack(vjust = 0.5),
+            size = 3, lineheight = 0.9, color = "black") +
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  scale_fill_manual(values = c("Australia"  = "#F8766D",
+                               "Overseas"   = "#00BFC4",
+                               "Not Stated" = "grey70")) +
+  labs(x = NULL, y = "Proportion",
+       fill = NULL,
+       title = "Australia vs Overseas — Proportion by LHD (2021)") +
+  theme_minimal(base_size = 12) +
+  theme(axis.text.x = element_text(),
+        legend.position = "bottom")
+```
+
+```{r, include=FALSE}
+lang_eng_metro_2021 <- cd_nsw_2021 %>%
+  filter(in_metro == 1) %>%
+  select(sa2_name_2021, nsw_lhd_name, pop_size, english, non_english, not_stated_lang)
+
+lang_metro <- lang_eng_metro_2021 %>%
+  group_by(nsw_lhd_name) %>%
+  summarise(
+    pop_total = sum(pop_size, na.rm = TRUE),
+    english = sum(english, na.rm = TRUE),
+    non_english  = sum(non_english,  na.rm = TRUE),
+    not_stated_lang  = sum(not_stated_lang,  na.rm = TRUE),
+    .groups = "drop"
+  )
+
+lang_metro_long <- lang_metro %>%
+  pivot_longer(
+    cols = c(english, non_english, not_stated_lang),
+    names_to = "origin",
+    values_to = "count"
+  ) %>%
+  mutate(
+    origin = factor(origin, levels = c("english", "non_english","not_stated_lang"),
+                    labels = c("English", "Non-English", "Not Stated")),
+    prop = count / pop_total
+  )
+
+lang_metro_order <- lang_metro_long %>%
+  filter(origin == "Non-English") %>%
+  arrange(desc(prop)) %>%
+  pull(nsw_lhd_name)
+
+lang_metro_long <- lang_metro_long %>%
+  mutate(nsw_lhd_name = factor(nsw_lhd_name, levels = lang_metro_order))
+
+lang_metro_lab <- lang_metro_long %>%
+  mutate(
+    prop  = count / pop_total,
+    label = 
+      paste0(comma(count), "\n", percent(prop, accuracy = 0.1)))
+```
+
+```{r, echo=FALSE}
+ggplot(lang_metro_lab, aes(x = nsw_lhd_name, y = prop, fill = origin)) +
+  geom_col(width = 0.5) +
+  geom_text(aes(label = label),
+            position = position_stack(vjust = 0.5),
+            size = 3, lineheight = 0.9, color = "black") +
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  scale_fill_manual(values = c("English"  = "#F8766D",
+                               "Non-English"   = "#00BFC4",
+                               "Not Stated" = "grey70")) +
+  labs(x = NULL, y = "Proportion",
+       fill = NULL,
+       title = "English vs Non-English Speaking at Home — Proportion by LHD (2021)") +
+  theme_minimal(base_size = 12) +
+  theme(axis.text.x = element_text(),
+        legend.position = "bottom")
+```

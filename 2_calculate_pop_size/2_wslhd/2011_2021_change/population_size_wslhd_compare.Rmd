@@ -1,0 +1,111 @@
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(dplyr)
+library(tidyr)
+library(strayr)
+library(sf)
+library(ggplot2)
+```
+
+
+```{r, echo=TRUE}
+# Read datasets
+pop_nsw_comp <- read.csv("pop_size_nsw_compare.csv")
+```
+
+```{r, echo=TRUE}
+head(pop_nsw_comp)
+```
+
+```{r, include=FALSE}
+# Filter WSLHD
+pop_wslhd_comp <- pop_nsw_comp %>%
+  filter(in_wslhd_2021 == 1)
+
+# Save WSLHD population size document.
+# write_csv(pop_size_wslhd_2021, "pop_size_wslhd_2021.csv")
+```
+
+
+```{r, include=FALSE}
+# Filter ABS map datasets
+sa2_map_2021 <- read_absmap("sa22021") %>%
+  filter(state_name_2021 == "New South Wales")
+
+lga_map_2021 <- read_absmap("lga2021") %>%
+  filter(state_name_2021 == "New South Wales")
+```
+
+```{r, include=FALSE}
+# Flag NA for non-residuals
+pop_wslhd_comp_clean <- pop_wslhd_comp  %>%
+  mutate(
+    growth_rate = ifelse(
+      sa2_name_2021%in% c("Prospect Reservoir",
+                "Smithfield Industrial",
+                "Yennora Industrial", 
+                "Rookwood Cemetery"),
+      NA, 
+      growth_rate  ))
+```
+
+```{r, include=FALSE}
+map_pop_wslhd_comp <- sa2_map_2021 %>%
+  filter(sa2_name_2021 %in% pop_wslhd_comp_clean$sa2_name_2021) %>%
+  left_join(pop_wslhd_comp_clean, by = "sa2_name_2021") %>%
+  mutate(growth_rate = growth_rate / 100)
+```
+
+```{r, include=FALSE}
+sa2_union_pop_2021 <- map_pop_wslhd_comp1 %>%
+  filter(!is.na(growth_rate)) %>%
+  st_union()
+
+wslhd_lgas <- c("Blacktown","Parramatta","Cumberland","The Hills Shire")
+
+lga_wslhd_2021 <- lga_map_2021 %>%
+  filter(lga_name_2021 %in% wslhd_lgas) %>%
+  st_transform(crs = st_crs(map_pop_wslhd_comp))
+```
+
+## Plots for WSLHD Popoulation Size (2021)
+
+- Grey areas represent Prospect Reservoir, Smithfield Industrial, Yennora Industrial, and Rookwood Cemetery. Due to population < 15, these SA2s have been excluded from subsequent plots.
+
+```{r, echo=FALSE}
+pop_fill_scale <- function() {
+  scale_fill_viridis_c(
+    option = "plasma",
+    name   = "Population Growth Rate",
+    labels = scales::percent,
+    oob    = scales::squish,                 
+    na.value = "grey"
+  )
+}
+
+ggplot(map_pop_wslhd_comp) +
+  geom_sf(aes(fill = growth_rate), color = "black", size = 2) +
+  geom_sf(data = lga_wslhd_2021, fill = NA, color = "darkred", linewidth = 0.8) +
+  pop_fill_scale() +
+  labs(
+    title = "Population Growth Rate by SA2 (WSLHD, 2021)"
+  ) +
+  annotate("text",
+           x = Inf, y = -Inf,
+           label = "Grey areas are Prospect Reservoir, Smithfield Industrial, Yennora Industrial and Rookwood Cemetery",
+           hjust = 2, vjust = 0.5,size = 2, colour = "grey30") +
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(), 
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    axis.title = element_blank() 
+  )
+
+# ggsave("map_wslhd_2021.png", p2021,
+#      width = 12, height = 9, units = "in", dpi = 600, bg = "transparent")
+```
