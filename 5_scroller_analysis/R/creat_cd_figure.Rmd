@@ -1,0 +1,668 @@
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(readr)
+library(dplyr)
+library(tidyr)
+library(strayr)
+library(sf)
+library(stringr)
+library(ggplot2)
+library(forcats)
+library(scales)
+library(patchwork)
+library(ggtext)
+```
+
+```{r, include=FALSE}
+# Read datasets (variables from prepossessing folder)
+pop_nsw_2021 <- read.csv("../data/pop_size_nsw_2021.csv")
+cob_nsw_2021 <- read.csv("../data/cob_4level_nsw_2021.csv") %>%
+  rename(sa2_name_2021 = sa2)
+lang_nsw_2021 <- read.csv("../data/lang_4level_nsw_2021.csv") %>%
+  rename(sa2_name_2021 = sa2)
+sa2_lga_lhd_nsw_2021 <- read.csv("../data/sa2_lga_lhd_nsw_2021.csv")
+
+# Read ABS map datasets
+sa2_map_2021 <- read_absmap("sa22021") %>%
+  filter(state_name_2021 == "New South Wales")
+
+lga_map_2021 <- read_absmap("lga2021") %>%
+  filter(state_name_2021 == "New South Wales")
+```
+
+```{r, include=FALSE}
+names(cob_nsw_2021)
+names(lang_nsw_2021)
+```
+
+```{r, include=FALSE}
+# Clean cob dataset
+cob_nsw_2021 <- cob_nsw_2021 %>%
+  rename_with(~ tolower(.x)  %>%
+    str_replace_all("[._/]+", "_")  %>%
+    str_replace_all("^_+|_+$", "")) %>%
+  rename(not_stated_cob = not_stated,
+         niue_cob = niue,
+         inadeq_desc_cob = inadequately_described)
+```
+
+```{r, include=FALSE}
+aus_cols <- c("australia_includes_external_territories_nfd",
+              "australia",
+              "norfolk_island",
+              "australian_external_territories_nec")
+
+cob_nsw_2021 <- cob_nsw_2021 %>%
+  mutate(australia_total = rowSums(across(any_of(aus_cols)), na.rm = TRUE))
+
+# Exclude numerical columns (not included in overseas summation)
+overseas_prot_cols <- c("australia_total",
+                        
+                        "australia_includes_external_territories_nfd",
+                        "australia",
+                        "norfolk_island",
+                        "australian_external_territories_nec",
+                        
+                        "overseas", 
+                        
+                        "not_stated_cob")
+
+overseas_cols <- cob_nsw_2021 %>%
+  select(where(is.numeric)) %>%
+  names() %>%
+  setdiff(overseas_prot_cols)
+
+cob_nsw_2021 <- cob_nsw_2021 %>%
+  mutate(overseas = rowSums(across(all_of(overseas_cols)), na.rm = TRUE))
+```
+
+
+```{r, include=FALSE}
+# Clean lang dataset
+lang_nsw_2021 <- lang_nsw_2021 %>%
+  rename_with(~ tolower(.x)  %>%
+    str_replace_all("[._/]+", "_")  %>%
+    str_replace_all("^_+|_+$", "")) %>%
+    rename(not_stated_lang = not_stated,
+           niue_lang = niue,
+           inadeq_desc_lang = inadequately_described)
+  
+# Exclude numerical columns (not included in non-english summation)
+lang_prot_cols <- c("english", 
+                    "non_english", 
+                    "not_stated_lang")
+
+non_english_cols <- lang_nsw_2021 %>%
+  select(where(is.numeric)) %>%
+  names() %>%
+  setdiff(lang_prot_cols)
+
+lang_nsw_2021 <- lang_nsw_2021 %>%
+  mutate(non_english = rowSums(across(all_of(non_english_cols)), na.rm = TRUE))
+```
+
+```{r, include=FALSE}
+cd_nsw_2021 <- pop_nsw_2021 %>%
+  left_join(cob_nsw_2021, by = "sa2_name_2021") %>%
+  left_join(lang_nsw_2021, by = "sa2_name_2021") %>%
+  left_join(sa2_lga_lhd_nsw_2021, by = "sa2_name_2021")
+```
+
+```{r, include=FALSE}
+cob_aus_osea_metro_2021 <- cd_nsw_2021 %>%
+  filter(in_metro == 1) %>%
+  select(sa2_name_2021, nsw_lhd_name, pop_size, australia_total, overseas, not_stated_cob)
+
+cob_metro <- cob_aus_osea_metro_2021 %>%
+  group_by(nsw_lhd_name) %>%
+  summarise(
+    pop_total = sum(pop_size, na.rm = TRUE),
+    australia_total = sum(australia_total, na.rm = TRUE),
+    overseas  = sum(overseas,  na.rm = TRUE),
+    not_stated_cob  = sum(not_stated_cob,  na.rm = TRUE),
+    .groups = "drop"
+  )
+
+cob_metro_long <- cob_metro %>%
+  pivot_longer(
+    cols = c(australia_total, overseas, not_stated_cob),
+    names_to = "origin",
+    values_to = "count"
+  ) %>%
+  mutate(
+    origin = factor(origin, levels = c("australia_total", "overseas", "not_stated_cob"),
+                    labels = c("Australia", "Overseas", "Not Stated")),
+    prop = count / pop_total
+  )
+
+cob_metro_order <- cob_metro_long %>%
+  filter(origin == "Overseas") %>%
+  arrange(desc(prop)) %>%
+  pull(nsw_lhd_name)
+
+cob_metro_long <- cob_metro_long %>%
+  mutate(nsw_lhd_name = factor(nsw_lhd_name, levels = cob_metro_order))
+
+cob_metro_lab <- cob_metro_long %>%
+  mutate(
+    prop  = count / pop_total,
+    label = 
+      paste0(comma(count), "\n", percent(prop, accuracy = 0.1)))
+```
+
+```{r, echo=FALSE}
+metro_cob_1 <- ggplot(cob_metro_lab, aes(x = nsw_lhd_name, y = prop, fill = origin)) +
+  geom_col(width = 0.5) +
+  geom_text(aes(label = label),
+            position = position_stack(vjust = 0.5),
+            size = 4, lineheight = 0.9, color = "black") +
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  scale_fill_manual(values = c("Australia"  = "#43978D",
+                               "Overseas"   = "#D46C4E",
+                               "Not Stated" = "grey70")) +
+  labs(x = NULL, y = NULL,
+       fill = NULL,
+       title = "<span style='color:#43978D;'>Born in Australia</span> vs <span style='color:#D46C4E;'>Born Overseas</span> (Proportions by NSW Metropolitan LHDs in 2021)") +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title     = element_markdown(size = 18, face = "bold", hjust = 0.5),
+    axis.text.x    = element_text(size = 12, color = "black"),
+    axis.text.y    = element_text(size = 16, color = "black"),
+    legend.text    = element_text(size = 16, color = "black"),
+    legend.position= "bottom",
+    panel.grid     = element_blank()
+    )
+```
+
+```{r}
+# ggsave("metro_cob_1.png", metro_cob_1,
+#      width = 12, height = 9, units = "in", dpi = 600, bg = "white")
+```
+
+
+```{r, include=FALSE}
+lang_eng_metro_2021 <- cd_nsw_2021 %>%
+  filter(in_metro == 1) %>%
+  select(sa2_name_2021, nsw_lhd_name, pop_size, english, non_english, not_stated_lang)
+
+lang_metro <- lang_eng_metro_2021 %>%
+  group_by(nsw_lhd_name) %>%
+  summarise(
+    pop_total = sum(pop_size, na.rm = TRUE),
+    english = sum(english, na.rm = TRUE),
+    non_english  = sum(non_english,  na.rm = TRUE),
+    not_stated_lang  = sum(not_stated_lang,  na.rm = TRUE),
+    .groups = "drop"
+  )
+
+lang_metro_long <- lang_metro %>%
+  pivot_longer(
+    cols = c(english, non_english, not_stated_lang),
+    names_to = "origin",
+    values_to = "count"
+  ) %>%
+  mutate(
+    origin = factor(origin, levels = c("english", "non_english","not_stated_lang"),
+                    labels = c("English", "Non-English", "Not Stated")),
+    prop = count / pop_total
+  )
+
+lang_metro_order <- lang_metro_long %>%
+  filter(origin == "Non-English") %>%
+  arrange(desc(prop)) %>%
+  pull(nsw_lhd_name)
+
+lang_metro_long <- lang_metro_long %>%
+  mutate(nsw_lhd_name = factor(nsw_lhd_name, levels = lang_metro_order))
+
+lang_metro_lab <- lang_metro_long %>%
+  mutate(
+    prop  = count / pop_total,
+    label = 
+      paste0(comma(count), "\n", percent(prop, accuracy = 0.1)))
+```
+
+```{r, echo=FALSE}
+metro_lang_1 <- ggplot(lang_metro_lab, aes(x = nsw_lhd_name, y = prop, fill = origin)) +
+  geom_col(width = 0.5) +
+  geom_text(aes(label = label),
+            position = position_stack(vjust = 0.5),
+            size = 4, lineheight = 0.9, color = "black") +
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  scale_fill_manual(values = c("English"  = "#439755",
+                               "Non-English"   = "#F59E0B",
+                               "Not Stated" = "grey70")) +
+  labs(x = NULL, y = NULL,
+       fill = NULL,
+       title = "<span style='color:#439755;'>English</span> vs <span style='color:#F59E0B;'>Non-English</span> Speaking at Home (Proportions by NSW Metropolitan LHDs in 2021)") +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title     = element_markdown(size = 18, face = "bold", hjust = 0.5),
+    axis.text.x    = element_text(size = 12, color = "black"),
+    axis.text.y    = element_text(size = 16, color = "black"),
+    legend.text    = element_text(size = 16, color = "black"),
+    legend.position= "bottom",
+    panel.grid     = element_blank()
+    )
+```
+
+
+```{r}
+# ggsave("metro_lang_1.png", metro_lang_1,
+#      width = 12, height = 9, units = "in", dpi = 600, bg = "white")
+```
+
+```{r}
+# metro_cd_1 <- (metro_cob_1 / metro_lang_1) + plot_layout(heights = c(1, 1))
+# 
+# ggsave("metro_cd_1.png", metro_cd_1,
+#      width = 12, height = 9, units = "in", dpi = 600, bg = "white")
+```
+
+```{r, include=FALSE}
+wslhd_lgas <- c("Blacktown","Parramatta","Cumberland","The Hills Shire")
+
+cob_aus_osea_wslhd_2021 <- cd_nsw_2021 %>%
+  filter(in_wslhd == 1) %>%
+  select(sa2_name_2021, lga_name_2021, pop_size, australia_total, overseas, not_stated_cob)
+
+cob_lga_wslhd <- cob_aus_osea_wslhd_2021 %>%
+  filter(lga_name_2021 %in% wslhd_lgas)
+
+cob_lga_wslhd <- cob_lga_wslhd %>%
+  group_by(lga_name_2021) %>%
+  summarise(
+    pop_total = sum(pop_size, na.rm = TRUE),
+    australia_total = sum(australia_total, na.rm = TRUE),
+    overseas  = sum(overseas,  na.rm = TRUE),
+    not_stated_cob  = sum(not_stated_cob,  na.rm = TRUE),
+    .groups = "drop"
+  )
+
+cob_lga_wslhd_long <- cob_lga_wslhd %>%
+  pivot_longer(
+    cols = c(australia_total, overseas, not_stated_cob),
+    names_to = "origin",
+    values_to = "count"
+  ) %>%
+  mutate(
+    origin = factor(origin, levels = c("australia_total", "overseas", "not_stated_cob"),
+                    labels = c("Australia", "Overseas", "Not Stated")),
+    prop = count / pop_total
+  )
+
+cob_lga_wslhd_order <- cob_lga_wslhd_long %>%
+  filter(origin == "Overseas") %>%
+  arrange(desc(prop)) %>%
+  pull(lga_name_2021)
+
+cob_lga_wslhd_long <- cob_lga_wslhd_long %>%
+  mutate(lga_name_2021 = factor(lga_name_2021, levels = cob_lga_wslhd_order))
+
+cob_lga_wslhd_lab <- cob_lga_wslhd_long %>%
+  mutate(
+    prop  = count / pop_total,
+    label = 
+      paste0(comma(count), "\n", percent(prop, accuracy = 0.1)))
+```
+
+```{r, echo=FALSE}
+wslhd_cob_1 <- ggplot(cob_lga_wslhd_lab, aes(x = lga_name_2021, y = prop, fill = origin)) +
+  geom_col(width = 0.5) +
+  geom_text(aes(label = label),
+            position = position_stack(vjust = 0.5),
+            size = 4, lineheight = 0.9, color = "black") +
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  scale_fill_manual(values = c("Australia"  = "#43978D",
+                               "Overseas"   = "#D46C4E",
+                               "Not Stated" = "grey70")) +
+  labs(x = NULL, y = NULL,
+       fill = NULL,
+       title = "<span style='color:#43978D;'>Born in Australia</span> vs <span style='color:#D46C4E;'>Born Overseas</span> (Proportions by LGAs within WSLHD in 2021)") +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title     = element_markdown(size = 18, face = "bold", hjust = 0.5),
+    axis.text.x    = element_text(size = 12, color = "black"),
+    axis.text.y    = element_text(size = 16, color = "black"),
+    legend.text    = element_text(size = 16, color = "black"),
+    legend.position= "bottom",
+    panel.grid     = element_blank()
+    )
+```
+
+
+```{r, include=FALSE}
+lang_eng_wslhd_2021 <- cd_nsw_2021 %>%
+  filter(in_wslhd == 1) %>%
+  select(sa2_name_2021, lga_name_2021, pop_size, english, non_english, not_stated_lang)
+
+lang_lga_wslhd <- lang_eng_wslhd_2021 %>%
+  filter(lga_name_2021 %in% wslhd_lgas)
+
+lang_lga_wslhd <- lang_lga_wslhd %>%
+  group_by(lga_name_2021) %>%
+  summarise(
+    pop_total = sum(pop_size, na.rm = TRUE),
+    english = sum(english, na.rm = TRUE),
+    non_english  = sum(non_english,  na.rm = TRUE),
+    not_stated_lang  = sum(not_stated_lang,  na.rm = TRUE),
+    .groups = "drop"
+  )
+
+lang_lga_wslhd_long <- lang_lga_wslhd %>%
+  pivot_longer(
+    cols = c(english, non_english, not_stated_lang),
+    names_to = "origin",
+    values_to = "count"
+  ) %>%
+  mutate(
+    origin = factor(origin, levels = c("english", "non_english","not_stated_lang"),
+                    labels = c("English", "Non-English", "Not Stated")),
+    prop = count / pop_total
+  )
+
+lang_lga_wslhd_order <- lang_lga_wslhd_long %>%
+  filter(origin == "Non-English") %>%
+  arrange(desc(prop)) %>%
+  pull(lga_name_2021)
+
+lang_lga_wslhd_long <- lang_lga_wslhd_long %>%
+  mutate(lga_name_2021 = factor(lga_name_2021, levels = lang_lga_wslhd_order))
+
+lang_lga_wslhd_lab <- lang_lga_wslhd_long %>%
+  mutate(
+    prop  = count / pop_total,
+    label = 
+      paste0(comma(count), "\n", percent(prop, accuracy = 0.1)))
+```
+
+```{r, echo=FALSE}
+wslhd_lang_1 <- ggplot(lang_lga_wslhd_lab, aes(x = lga_name_2021, y = prop, fill = origin)) +
+  geom_col(width = 0.5) +
+  geom_text(aes(label = label),
+            position = position_stack(vjust = 0.5),
+            size = 4, lineheight = 0.9, color = "black") +
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  scale_fill_manual(values = c("English"  = "#439755",
+                               "Non-English"   = "#F59E0B",
+                               "Not Stated" = "grey70")) +
+  labs(x = NULL, y = NULL,
+       fill = NULL,
+       title = "<span style='color:#439755;'>English</span> vs <span style='color:#F59E0B;'>Non-English</span> Speaking at Home (Proportions by LGAs within WSLHD in 2021)") +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title     = element_markdown(size = 18, face = "bold", hjust = 0.5),
+    axis.text.x    = element_text(size = 10, color = "black"),
+    axis.text.y    = element_text(size = 16, color = "black"),
+    legend.text    = element_text(size = 16, color = "black"),
+    legend.position= "bottom",
+    panel.grid     = element_blank()
+    )
+```
+
+```{r}
+wslhd_cd_1 <- (wslhd_cob_1 / wslhd_lang_1 ) + plot_layout(heights = c(1, 1))
+
+ggsave("wslhd_cd_1.png", wslhd_cd_1,
+     width = 12, height = 9, units = "in", dpi = 600, bg = "white")
+```
+
+```{r, include=FALSE}
+cob_wslhd_2021 <- cd_nsw_2021 %>%
+  filter(in_wslhd == 1)
+  
+overseas_tot <- cob_wslhd_2021 %>%
+  summarise(
+    across(all_of(overseas_cols), ~ sum(.x, na.rm = TRUE)),
+    pop_total = sum(pop_size, na.rm = TRUE) 
+  ) %>%
+  pivot_longer(
+    cols = all_of(overseas_cols),         
+    names_to = "country",
+    values_to = "count"
+  ) %>%
+  mutate(
+    prop = count / pop_total,            
+    country_label = country %>% str_replace_all("_", " ") %>% str_to_title()
+  ) %>%
+  select(-pop_total) 
+
+overseas_tot <- overseas_tot %>% 
+  slice_max(order_by = count, n = 10, with_ties = FALSE)
+```
+
+```{r, echo=FALSE}
+plot_dat_cob <- overseas_tot %>%
+  mutate(
+    axis_label = paste0(
+      country_label, ": ",
+      comma(count), " (", percent(prop, accuracy = 0.1), ")"
+    )
+  )
+
+wslhd_cob_2 <- ggplot(plot_dat_cob, aes(x = reorder(axis_label, count), y = count)) +
+  geom_col(width = 0.7, fill = "#D46C4E") +
+  coord_flip(clip = "off") +
+  scale_y_continuous(labels = comma, expand = expansion(mult = c(0, 0.02))) +
+  labs(x = NULL, y = NULL,
+       title = "Top 10 <span style='color:#D46C4E;'>Overseas</span> Countries of Birth in WSLHD in 2021") +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title          = element_markdown(size = 20, face = "bold", hjust = 0.7),
+    plot.title.position = "plot",
+    axis.text.y         = element_text(size = 10, color = "black"), 
+    axis.text.x         = element_blank(),
+    panel.grid          = element_blank(),
+    plot.margin         = margin(5.5, 20, 5.5, 5.5)
+  )
+```
+
+```{r}
+# ggsave("wslhd_cob_2.png", wslhd_cob_2,
+#      width = 12, height = 9, units = "in", dpi = 600, bg = "white")
+```
+
+```{r, include=FALSE}
+lang_wslhd_2021  <- cd_nsw_2021 %>%
+  filter(in_wslhd == 1)
+  
+non_english_tot <- lang_wslhd_2021 %>%
+  summarise(
+    across(all_of(non_english_cols), ~ sum(.x, na.rm = TRUE)),
+    pop_total = sum(pop_size, na.rm = TRUE) 
+  ) %>%
+  pivot_longer(
+    cols = all_of(non_english_cols),         
+    names_to = "language",
+    values_to = "count"
+  ) %>%
+  mutate(
+    prop = count / pop_total,            
+    language_label = language %>% str_replace_all("_", " ") %>% str_to_title()
+  ) %>%
+  select(-pop_total) 
+
+non_english_tot <- non_english_tot %>% 
+  slice_max(order_by = count, n = 10, with_ties = FALSE)
+```
+
+```{r, echo=FALSE}
+plot_dot_lang <- non_english_tot %>%
+  mutate(
+    axis_label = paste0(
+      language_label, ": ",
+      comma(count), " (",
+      percent(prop, accuracy = 0.1), ")"
+    )
+  )
+
+wslhd_lang_2 <- ggplot(plot_dot_lang, aes(x = reorder(axis_label, count), y = count)) +
+  geom_col(width = 0.7, fill = "#F59E0B") +
+  coord_flip(clip = "off") +
+  scale_y_continuous(labels = scales::comma,
+                     expand = expansion(mult = c(0, 0.02))) +
+  labs(
+    x = NULL, y = NULL,
+    title = "Top 10 <span style='color:#F59E0B;'>Non-English</span> Languages Speaking at Home in WSLHD in 2021"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title          = element_markdown(size = 19, face = "bold", hjust = 1.05),
+    plot.title.position = "plot",
+    axis.text.y         = element_text(size = 10, color = "black"), 
+    axis.text.x         = element_blank(),
+    panel.grid          = element_blank(),
+    plot.margin         = margin(5.5, 20, 5.5, 5.5) 
+  )
+
+```
+
+```{r}
+# ggsave("wslhd_lang_2.png", wslhd_lang_2,
+#      width = 12, height = 9, units = "in", dpi = 600, bg = "white")
+```
+
+
+```{r}
+# wslhd_cd_2 <- (wslhd_cob_2 / wslhd_lang_2 ) + plot_layout(heights = c(1, 1))
+# 
+# ggsave("wslhd_cd_2.png", wslhd_cd_2,
+#      width = 12, height = 9, units = "in", dpi = 600, bg = "white")
+```
+
+
+```{r}
+exclude_sa2 <- c("Prospect Reservoir", "Smithfield Industrial",
+                 "Yennora Industrial", "Rookwood Cemetery")
+
+
+cob_osea_high_wslhd_2021 <- cob_aus_osea_wslhd_2021 %>%
+  mutate(
+    prop_overseas = if_else(pop_size > 0, overseas / pop_size, NA_real_),
+    osea_high_lgl  = prop_overseas > 0.47, 
+    osea_high_flag = case_when(
+      sa2_name_2021 %in% exclude_sa2 ~ "Excluded",
+      is.na(osea_high_lgl)            ~ NA_character_,
+      osea_high_lgl                   ~ "> WSLHD (47.0%)",
+      TRUE                           ~ "≤ WSLHD (47.0%)"
+    ),
+    oseahigh_flag = factor(osea_high_flag,
+      levels = c("≤ WSLHD (47.0%)", "> WSLHD (47.0%)", "Excluded")
+    )
+  ) %>%
+  select(sa2_name_2021, prop_overseas, osea_high_flag)
+
+
+map_osea_high_wslhd_2021 <- sa2_map_2021 %>%
+  filter(sa2_name_2021 %in% cob_osea_high_wslhd_2021$sa2_name_2021) %>%
+  left_join(cob_osea_high_wslhd_2021, by = "sa2_name_2021")
+
+
+cob_lga_wslhd_2021 <- lga_map_2021 %>%
+  filter(lga_name_2021 %in% wslhd_lgas) %>%
+  st_transform(crs = st_crs(map_osea_high_wslhd_2021))
+```
+
+
+```{r}
+wslhd_cob_3 <- ggplot(map_osea_high_wslhd_2021) +
+  geom_sf(aes(fill = osea_high_flag), color = "#144a74", linewidth = 0.2) +
+  geom_sf(data = cob_lga_wslhd_2021, fill = NA, color = "#111827", linewidth = 0.4) +
+  scale_fill_manual(
+    values = c(
+      "≤ WSLHD (47.0%)" = "#43978D",
+      "> WSLHD (47.0%)" = "#D46C4E",
+      "Excluded"     = "#D0D7DE"      
+    ),
+    breaks = c("≤ WSLHD (47.0%)", "> WSLHD (47.0%)"), 
+    name = NULL
+  ) +
+    labs(title = "SA2s Where the Overseas-Born Share Exceeds
+         <br>WSLHD Overall Rate of <span style='color:#D46C4E;'>47.0%</span> in 2021",
+       caption = "Grey areas represent non-residentials") +
+  theme_minimal(base_size = 13) +
+  theme(
+    panel.grid      = element_blank(),
+    axis.text       = element_blank(), axis.ticks = element_blank(),
+    axis.title      = element_blank(),
+    legend.position = "bottom",
+    plot.title      = element_markdown(size = 18, face = "bold", hjust = 0.5),
+    plot.caption    = element_text(size = 10, hjust = 0.5)
+  )
+```
+
+
+```{r}
+ggsave("wslhd_cob_3.png", wslhd_cob_3,
+     width = 9, height = 9, units = "in", dpi = 600, bg = "white")
+```
+
+```{r}
+lang_noe_high_wslhd_2021 <- lang_eng_wslhd_2021 %>%
+  mutate(
+    prop_non_english = if_else(pop_size > 0, non_english / pop_size, NA_real_),
+    noe_high_lgl  = prop_non_english> 0.507, 
+    noe_high_flag =case_when(
+      sa2_name_2021 %in% exclude_sa2 ~ "Excluded",
+      is.na(noe_high_lgl)           ~ NA_character_,
+      noe_high_lgl                    ~ "> WSLHD (50.7%)",
+      TRUE                           ~ "≤ WSLHD (50.7%)"
+    ),
+    oseahigh_flag = factor(noe_high_flag,
+      levels = c("≤ WSLHD (50.7%)", "> WSLHD (50.7%)", "Excluded")
+    )
+  ) %>%
+  select(sa2_name_2021, prop_non_english, noe_high_flag)
+
+map_noe_high_wslhd_2021 <- sa2_map_2021 %>%
+  filter(sa2_name_2021 %in% lang_noe_high_wslhd_2021$sa2_name_2021) %>%
+  left_join(lang_noe_high_wslhd_2021, by = "sa2_name_2021")
+
+
+lang_lga_wslhd_2021 <- lga_map_2021 %>%
+  filter(lga_name_2021 %in% wslhd_lgas) %>%
+  st_transform(crs = st_crs(map_noe_high_wslhd_2021))
+```
+
+```{r}
+wslhd_lang_3 <- ggplot(map_noe_high_wslhd_2021) +
+  geom_sf(aes(fill = noe_high_flag), color = "#144a74", linewidth = 0.2) +
+  geom_sf(data = lang_lga_wslhd_2021 , fill = NA, color = "#111827", linewidth = 0.4) +
+  scale_fill_manual(
+    values = c(
+      "≤ WSLHD (50.7%)" = "#439755",
+      "> WSLHD (50.7%)" = "#F59E0B",
+      "Excluded"     = "#D0D7DE"      
+    ),
+    breaks = c("≤ WSLHD (50.7%)", "> WSLHD (50.7%)"), 
+    name = NULL
+  ) +
+    labs(title = "SA2s Where the Non-English Share Exceeds
+         <br>WSLHD Overall Rate of <span style='color:#F59E0B;'>50.7%</span> in 2021",
+       caption = "Grey areas represent non-residentials") +
+  theme_minimal(base_size = 13) +
+  theme(
+    panel.grid      = element_blank(),
+    axis.text       = element_blank(), axis.ticks = element_blank(),
+    axis.title      = element_blank(),
+    legend.position = "bottom",
+    plot.title      = element_markdown(size = 18, face = "bold", hjust = 0.5),
+    plot.caption    = element_text(size = 10, hjust = 0.5),
+    )
+```
+
+```{r}
+# ggsave("wslhd_lang_3.png", wslhd_lang_3,
+#      width = 9, height = 9, units = "in", dpi = 600, bg = "white")
+```
+
+```{r}
+# wslhd_cd_3 <- (wslhd_cob_3 | wslhd_lang_3 ) +   plot_layout(widths = c(5, 5))
+# 
+# ggsave("wslhd_cd_3.png", wslhd_cd_3,
+#      width = 12, height = 9, units = "in", dpi = 600, bg = "white")
+```

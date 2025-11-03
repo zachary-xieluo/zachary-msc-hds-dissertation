@@ -1,0 +1,54 @@
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# Import package
+library(dplyr)
+library(readr)
+```
+
+```{r}
+# Check invalid lines for head and tail
+all_lines <- readLines("labr_stats_raw_2021.csv")
+length(all_lines) 
+head(all_lines, 11)
+tail(all_lines, 9)
+```
+
+```{r}
+# Remove invalid lines
+clean_lines <- all_lines[10:(length(all_lines) - 9)]
+
+# define temporary file name
+temp_file <- "labr_stats_temp_2021.csv"
+
+# Save temporary file for document
+writeLines(clean_lines, temp_file)
+
+# read temporary file
+labr_stats_2021 <- read_csv(temp_file)
+
+# Display data frame
+head(labr_stats_2021)
+```
+
+```{r}
+# Remove NA column
+labr_stats_2021 <- labr_stats_2021 %>% select(where(~ !all(is.na(.))))
+
+# Remove 'Total' column
+labr_stats_2021 <- labr_stats_2021 %>% select(-Total)
+
+# Remove 'SA2 (UR)' row
+labr_stats_2021 <- labr_stats_2021 %>% filter(.[[1]] != "SA2 (UR)")
+
+# Rename sa2 
+labr_stats_2021 <- labr_stats_2021 %>% rename(sa2 = 'LFSP Labour Force Status')
+
+# Check data frame
+head(labr_stats_2021)
+
+write_csv(labr_stats_2021, "labr_stats_nsw_2021.csv")
+```

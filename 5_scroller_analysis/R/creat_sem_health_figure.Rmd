@@ -1,0 +1,1168 @@
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(readr)
+library(dplyr)
+library(tidyr)
+library(strayr)
+library(sf)
+library(stringr)
+library(ggplot2)
+library(forcats)
+library(scales)
+library(patchwork)
+library(biscale)
+library(cowplot)
+library(ggtext)
+library(ggrepel)
+library(leaflet)
+library(htmltools)
+library(plotly)
+```
+
+```{r, include=FALSE}
+# Read datasets (variables from prepossessing folder)
+cen_nsw_2021 <- read.csv("../data/cencus_nsw_2021.csv")
+geo_nsw_2021 <- read.csv("../data/sa2_lga_lhd_nsw_2021.csv")
+irsd_nsw_2021 <- read.csv("../data/irsd_nsw_2021.csv")
+
+# Read SA2 map (NSW only) + remove offshore
+sa2_map_2021 <- read_absmap("sa22021") %>%
+  filter(state_name_2021 == "New South Wales") %>%
+  filter(!grepl("Lord Howe Island", sa2_name_2021, ignore.case = TRUE)) %>%
+  st_make_valid()
+
+# Read LGA map (NSW only)
+lga_map_2021 <- read_absmap("lga2021") %>%
+  filter(state_name_2021 == "New South Wales") %>%
+  st_make_valid()
+
+# Read LHD map (NSW LHDs 2023)
+lhd_map_2023 <- read_absmap("nsw_lhd2023") %>%
+  st_make_valid()
+```
+
+```{r}
+cen_nsw_2021 <- cen_nsw_2021 %>%
+  left_join(geo_nsw_2021, by = "sa2_name_2021") %>%
+  left_join(irsd_nsw_2021, by = "sa2_name_2021")
+```
+
+
+```{r}
+cen_wslhd_2021 <- cen_nsw_2021 %>%
+  filter(in_wslhd == 1) %>%
+  mutate(bachelor_below = adv_diploma + high_school_below,
+         low_income_total = neg_nil_income + very_low_income + low_income,
+         high_income_total = high_income + very_high_income)
+```
+
+```{r}
+ws_prop <- cen_wslhd_2021 %>%
+  summarise(
+    # Education
+    prop_bachelor_above = sum(bachelor_above, na.rm = TRUE) / sum(denominator_edu, na.rm = TRUE),
+    prop_bachelor_below = sum(bachelor_below, na.rm = TRUE) / sum(denominator_edu, na.rm = TRUE),
+    prop_unknown_edu    = sum(unknown_edu,  na.rm = TRUE) / sum(denominator_edu, na.rm = TRUE),
+
+    # Occupation
+    prop_managers_professionals = sum(managers_professionals, na.rm = TRUE) / sum(denominator_occup, na.rm = TRUE),
+    prop_everyone_else          = sum(everyone_else,          na.rm = TRUE) / sum(denominator_occup, na.rm = TRUE),
+    prop_unknown_occup          = sum(unknown_occup,          na.rm = TRUE) / sum(denominator_occup, na.rm = TRUE),
+
+    # Income
+    prop_low_income_total  = sum(low_income_total,  na.rm = TRUE) / sum(denominator_income, na.rm = TRUE),
+    prop_middle_income     = sum(middle_income,     na.rm = TRUE) / sum(denominator_income, na.rm = TRUE),
+    prop_high_income_total = sum(high_income_total, na.rm = TRUE) / sum(denominator_income, na.rm = TRUE),
+    prop_unknown_income    = sum(unknown_income,    na.rm = TRUE) / sum(denominator_income, na.rm = TRUE),
+
+    # Housing
+    prop_social_housing        = sum(social_housing,        na.rm = TRUE) / sum(denominator_housing_type, na.rm = TRUE),
+    prop_non_social_housing    = sum(non_social_housing,    na.rm = TRUE) / sum(denominator_housing_type, na.rm = TRUE),
+    prop_unknown_housing_type  = sum(unknown_housing_type,  na.rm = TRUE) / sum(denominator_housing_type, na.rm = TRUE)
+  )
+
+edu_df <- ws_prop %>%
+  select(prop_bachelor_above, prop_bachelor_below, prop_unknown_edu) %>%
+  pivot_longer(everything(), names_to = "category", values_to = "prop") %>%
+  mutate(category = recode(category,
+                           prop_bachelor_above = "Bachelor or above",
+                           prop_bachelor_below = "Below bachelor",
+                           prop_unknown_edu    = "Unknown"))
+
+occ_df <- ws_prop %>%
+  select(prop_managers_professionals, prop_everyone_else, prop_unknown_occup) %>%
+  pivot_longer(everything(), names_to = "category", values_to = "prop") %>%
+  mutate(category = recode(category,
+                           prop_managers_professionals = "Managers & Professionals",
+                           prop_everyone_else          = "Everyone else",
+                           prop_unknown_occup          = "Unknown"))
+
+inc_df <- ws_prop %>%
+  select(prop_low_income_total, prop_middle_income, prop_high_income_total, prop_unknown_income) %>%
+  pivot_longer(everything(), names_to = "category", values_to = "prop") %>%
+  mutate(category = recode(category,
+                           prop_low_income_total  = "Low",
+                           prop_middle_income     = "Middle",
+                           prop_high_income_total = "High",
+                           prop_unknown_income    = "Unknown"))
+
+hou_df <- ws_prop %>%
+  select(prop_social_housing, prop_non_social_housing, prop_unknown_housing_type) %>%
+  pivot_longer(everything(), names_to = "category", values_to = "prop") %>%
+  mutate(category = recode(category,
+                           prop_social_housing       = "Social housing",
+                           prop_non_social_housing   = "Non-social housing",
+                           prop_unknown_housing_type = "Unknown"))
+```
+
+
+```{r}
+make_plot <- function(df, title, base_col, cat_order, fade = FALSE, fade_alpha = 0.7){
+  df <- df %>% mutate(category = factor(category, levels = cat_order))
+  ymax <- max(df$prop, na.rm = TRUE)
+
+  fill_map <- setNames(rep(base_col, length(cat_order)), cat_order)
+  if ("Unknown" %in% names(fill_map)) fill_map["Unknown"] <- "#9CA3AF"
+
+  title_html <- if (!fade) {
+    sprintf("<span style='padding:3px 10px; border:2px solid #000; border-radius:10px; color:%s;'>%s</span>",
+            base_col, title)
+  } else {
+    sprintf("<span style='padding:3px 10px; border:2px solid rgba(0,0,0,%.2f); border-radius:10px; color:%s;'>%s</span>",
+            fade_alpha, alpha(base_col, 1 - fade_alpha), title)
+  }
+
+  col_alpha   <- if (fade) 1 - fade_alpha else 1
+  text_alpha  <- if (fade) 1 - fade_alpha else 1
+  axis_colour <- if (fade) alpha("black", 1 - fade_alpha) else "black"
+  grid_colour <- if (fade) alpha("grey85", 1 - fade_alpha) else "grey85"
+
+  ggplot(df, aes(category, prop, fill = category)) +
+    geom_col(width = 0.55, alpha = col_alpha) +
+    geom_text(aes(label = percent(prop, accuracy = 0.1)),
+              vjust = -0.6, size = 4.5, colour = alpha("black", text_alpha)) +
+    scale_y_continuous(labels = percent_format(accuracy = 1),
+                       limits = c(0, ymax * 1.15),
+                       expand = expansion(mult = c(0, 0))) +
+    scale_fill_manual(values = fill_map, guide = "none") +
+    labs(title = title_html, x = NULL, y = NULL) +
+    theme_minimal(base_size = 13) +
+    theme(
+      plot.title          = element_markdown(size = 16, face = "bold", hjust = 0.5),
+      axis.text.x         = element_text(size = 12, colour = axis_colour),
+      axis.text.y         = element_text(size = 12, colour = axis_colour),
+      panel.grid          = element_blank()
+    )
+}
+
+p_edu    <- make_plot(edu_df,    "Education",       "#43978D",
+                      cat_order = c("Bachelor or above","Below bachelor","Unknown"),
+                      fade = FALSE)
+p_occ    <- make_plot(occ_df,    "Occupation",      "#439755",
+                      cat_order = c("Managers & Professionals","Everyone else","Unknown"),
+                      fade = FALSE)
+p_income <- make_plot(inc_df,    "Personal Income", "#D46C4E",
+                      cat_order = c("Low","Middle","High","Unknown"),
+                      fade = FALSE)
+p_house  <- make_plot(hou_df,    "Housing Type",    "#F59E0B",
+                      cat_order = c("Social housing","Non-social housing","Unknown"),
+                      fade = FALSE)
+
+wslhd_sec_1 <- (p_edu | p_occ) / (p_income | p_house) +
+  plot_annotation(
+    title = "Distribution of Socioeconomic Characteristics in WSLHD (2021)",
+    caption = "Note: Unknown includes responses marked as not stated, supplementary codes, or inadequately described conditions",
+    theme = theme(
+      plot.title = element_text(size = 20, face = "bold", colour = "black", hjust = 0.5),
+      plot.caption  = element_text(size = 12, colour = "black", hjust = 0.05)
+    )
+  )
+
+```
+
+<!-- ```{r} -->
+<!-- ggsave("wslhd_sec_1.png", wslhd_sec_1, -->
+<!--      width = 12, height = 9, units = "in", dpi = 600, bg = "white") -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- ggsave("wslhd_sec_2.png", wslhd_sec_2, -->
+<!--      width = 12, height = 9, units = "in", dpi = 600, bg = "white") -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- ggsave("wslhd_sec_3.png", wslhd_sec_3, -->
+<!--      width = 12, height = 9, units = "in", dpi = 600, bg = "white") -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- ggsave("wslhd_sec_4.png", wslhd_sec_4, -->
+<!--      width = 12, height = 9, units = "in", dpi = 600, bg = "white") -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- ggsave("wslhd_sec_5.png", wslhd_sec_5, -->
+<!--      width = 12, height = 9, units = "in", dpi = 600, bg = "white") -->
+<!-- ``` -->
+
+
+```{r}
+exclude_sa2 <- c("Prospect Reservoir", "Smithfield Industrial",
+                 "Yennora Industrial", "Rookwood Cemetery")
+
+wslhd_lgas <- c("Blacktown","Parramatta","Cumberland","The Hills Shire")
+```
+
+```{r}
+map_wslhd_2021 <- sa2_map_2021 %>%
+    inner_join(cen_wslhd_2021 %>% 
+      filter(!sa2_name_2021 %in% exclude_sa2), 
+    by = "sa2_name_2021")
+
+map_lga_wslhd_2021 <- lga_map_2021 %>%
+  filter(lga_name_2021 %in% wslhd_lgas) %>%
+  st_transform(crs = st_crs(map_wslhd_2021))
+```
+
+
+```{r}
+wslhd_sec_2 <- ggplot(
+  data = map_wslhd_2021 %>%
+    mutate(
+      social_band = factor(
+        if_else(prop_social_housing >= 0.047, "≥WSLHD (4.7%)", "<WSLHD (4.7%)"),
+        levels = c("<WSLHD (4.7%)", "≥WSLHD (4.7%)")
+      )
+    ),
+  mapping = aes(fill = social_band)
+) +
+  geom_sf(colour = "#111827", linewidth = 0.25, lineend = "round") +
+  geom_sf(data = map_lga_wslhd_2021, fill = NA, color = "#111827", linewidth = 0.4) +
+  scale_fill_manual(
+          name = "Social housing proportion",
+          values = c("<WSLHD (4.7%)" = "#ffebc8","≥WSLHD (4.7%)" = "#F59E0B"
+    ),
+    drop     = FALSE,
+    na.value = "grey85"
+  ) +
+  labs(
+    caption  = "White areas represent non-residentials"
+  ) +
+  coord_sf(datum = NA) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid          = element_blank(),
+    axis.text           = element_blank(), axis.ticks = element_blank(),
+    axis.title          = element_blank(),
+    legend.position     = "bottom",
+    legend.title        = element_markdown(size = 14),
+    legend.text         = element_markdown(size = 14),
+    plot.title          = element_markdown(size = 18, face = "bold", hjust = 0.5),
+    plot.subtitle       = element_text(size = 10, hjust = 0.5),
+    plot.title.position = "plot",
+    plot.caption        = element_text(size = 10, hjust = 0.5, vjust = 2)
+  )
+```
+
+```{r}
+# ggsave("wslhd_sec_2.png", wslhd_sec_2,
+#      width = 9, height = 9, units = "in", dpi = 600, bg = "white")
+```
+
+
+```{r}
+healcons_metro_2021 <- cen_nsw_2021 %>%
+  filter(in_metro == 1) %>%
+  select(sa2_name_2021, nsw_lhd_name, pop_size, 
+         arthritis, asthma, cancer, dementia, diabetes, heart_disease,
+         kidney_disease, lung_condition, mental_health, stroke)
+```
+
+
+
+```{r}
+cond_levels <- c("arthritis_total","asthma_total","cancer_total","dementia_total",
+                 "diabetes_total","heart_disease_total","kidney_disease_total",
+                 "lung_condition_total","mental_health_total", "stroke_total")
+
+cond_labels <- c("Arthritis","Asthma","Cancer","Dementia","Diabetes",
+                 "Heart Disease","Kidney Disease","Lung Condition","Mental Health","Stroke")
+```
+
+```{r}
+healcons_metro_2021 <- cen_nsw_2021 %>%
+  filter(in_metro == 1) %>%
+  select(sa2_name_2021, nsw_lhd_name, pop_size, 
+         arthritis, asthma, cancer, dementia, diabetes, heart_disease,
+         kidney_disease, lung_condition, mental_health, stroke) %>%
+  group_by(nsw_lhd_name) %>%
+  summarise(
+    pop_total              = sum(pop_size, na.rm = TRUE),
+    arthritis_total        = sum(arthritis, na.rm = TRUE),
+    asthma_total           = sum(asthma, na.rm = TRUE),
+    cancer_total           = sum(cancer, na.rm = TRUE),
+    dementia_total         = sum(dementia, na.rm = TRUE),
+    diabetes_total         = sum(diabetes, na.rm = TRUE),
+    heart_disease_total    = sum(heart_disease, na.rm = TRUE),
+    kidney_disease_total   = sum(kidney_disease, na.rm = TRUE),
+    lung_condition_total   = sum(lung_condition, na.rm = TRUE),
+    mental_health_total    = sum(mental_health, na.rm = TRUE),
+    stroke_total           = sum(stroke, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# —— Metro overall——
+healcons_metro_overall <- healcons_metro_2021 %>%
+  pivot_longer(
+    cols = all_of(cond_levels),
+    names_to = "origin", values_to = "count"
+  ) %>%
+  mutate(origin = factor(origin, levels = cond_levels, labels = cond_labels)) %>%
+  group_by(origin) %>%
+  summarise(
+    metro_count = sum(count, na.rm = TRUE),
+    metro_pop   = sum(pop_total, na.rm = TRUE),
+    prop_overall = metro_count / metro_pop,
+    .groups = "drop"
+  )
+
+wslhd_totals_long <- cen_nsw_2021 %>%
+  filter(nsw_lhd_name ==  "Western Sydney") %>%
+  summarise(
+    pop_total              = sum(pop_size, na.rm = TRUE),
+    arthritis_total        = sum(arthritis, na.rm = TRUE),
+    asthma_total           = sum(asthma, na.rm = TRUE),
+    cancer_total           = sum(cancer, na.rm = TRUE),
+    dementia_total         = sum(dementia, na.rm = TRUE),
+    diabetes_total         = sum(diabetes, na.rm = TRUE),
+    heart_disease_total    = sum(heart_disease, na.rm = TRUE),
+    kidney_disease_total   = sum(kidney_disease, na.rm = TRUE),
+    lung_condition_total   = sum(lung_condition, na.rm = TRUE),
+    mental_health_total    = sum(mental_health, na.rm = TRUE),
+    stroke_total           = sum(stroke, na.rm = TRUE),
+  ) %>%
+  pivot_longer(
+    cols = all_of(cond_levels),
+    names_to = "origin", values_to = "count"
+  ) %>%
+  mutate(
+    origin = factor(origin, levels = cond_levels, labels = cond_labels),
+    prop   = count / pop_total
+  ) %>%
+  select(origin, prop)
+
+comp_healcons <- bind_rows(healcons_metro_overall %>%
+    transmute(origin, region = "Metropolitan LHDs", prop = prop_overall),
+  wslhd_totals_long %>%
+    transmute(origin, region = "WSLHD", prop)
+)
+
+```
+
+```{r}
+order_levels <- comp_healcons %>%
+  filter(region == "Metropolitan LHDs") %>%
+  arrange(prop) %>%
+  pull(origin) %>%
+  as.character()
+
+comp_healcons_plot <- comp_healcons %>%
+  mutate(origin = factor(origin, levels = order_levels))
+
+metro_healcons_1 <- ggplot(
+  comp_healcons_plot,
+  aes(x = origin, y = prop, fill = region)
+) +
+  geom_col(position = position_dodge(width = 0.75), width = 0.7) +
+  geom_text(aes(label = scales::percent(prop, accuracy = 0.1)),
+            position = position_dodge(width = 0.75),
+            hjust = -0.05, size = 4) +
+  coord_flip(clip = "off") +
+  scale_y_continuous(labels = percent_format(accuracy = 0.1),
+                     expand = expansion(mult = c(0, 0.15))) +
+  scale_fill_manual(values = c("Metropolitan LHDs"  = "#43978D",
+                               "WSLHD"   = "#D46C4E")) +
+  labs(x = NULL, y = NULL,
+       fill = NULL,
+       title = "Selected Health Condition Proportions: <span style='color:#43978D;'>NSW Metropolitan LHDs</span> vs <span style='color:#D46C4E;'>WSLHD</span> in 2021",
+       caption  = "Note: Health condition data are based on self-reported data") +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title          = element_markdown(size = 18, face = "bold", hjust = 0.5),
+    plot.title.position = "plot",
+    plot.caption        = element_text(size = 10, hjust = -0.1, vjust = 2),
+    axis.text.x         = element_text(size = 10, color = "black"),
+    axis.text.y         = element_text(size = 16, color = "black"),
+    legend.text         = element_text(size = 16, color = "black"),
+    legend.position     = "bottom",
+    panel.grid          = element_blank()
+    )
+```
+
+```{r}
+ggsave("metro_healcons_1.png", metro_healcons_1,
+     width = 12, height = 9, units = "in", dpi = 600, bg = "white")
+```
+
+```{r}
+# sem_vars <- c(
+#   "prop_high_school_below", 
+#   "prop_unemployed",         
+#   "prop_everyone_else",       
+#   "prop_low_income_total"    
+# )
+# 
+# 
+# sem_wslhd_2021 <- cen_nsw_2021 %>%
+#   filter(in_wslhd == 1) %>%
+#   mutate(prop_low_income_total = prop_very_low_income + prop_low_income + prop_neg_nil_income) %>%
+#   mutate(across(all_of(sem_vars), as.numeric)) %>%
+#   mutate(across(all_of(sem_vars), ~ squish(.x, range = quantile(.x, c(0.01, 0.99), na.rm = TRUE)))) %>%
+#   mutate(across(all_of(sem_vars), ~ as.numeric(scale(.x)))) %>%
+#   mutate(ses_index_zmean = rowMeans(across(all_of(sem_vars)), na.rm = TRUE),
+#          ses_index_0_100 = rescale(ses_index_zmean, to = c(0, 100)))
+```
+
+```{r}
+sem_wslhd_2021 <- cen_nsw_2021 %>%
+  filter(in_wslhd == 1)
+  # mutate(prop_low_income_total = prop_very_low_income + prop_low_income + prop_neg_nil_income) %>%
+  # mutate(across(all_of(sem_vars), as.numeric)) %>%
+  # mutate(across(all_of(sem_vars), ~ squish(.x, range = quantile(.x, c(0.01, 0.99), na.rm = TRUE)))) %>%
+  # mutate(across(all_of(sem_vars), ~ as.numeric(scale(.x)))) %>%
+  # mutate(ses_index_zmean = rowMeans(across(all_of(sem_vars)), na.rm = TRUE),
+  #        ses_index_0_100 = rescale(ses_index_zmean, to = c(0, 100)))
+```
+
+```{r}
+# setdiff(sem_vars, names(sem_wslhd_2021))
+# summary(sem_wslhd_2021$ses_index_0_100)
+```
+
+```{r}
+top4_diseases <- c("prop_arthritis", "prop_asthma", "prop_diabetes", "prop_mental_health")
+
+heal_burden <- sem_wslhd_2021 %>%
+  mutate(across(all_of(top4_diseases), as.numeric)) %>%
+  
+  # Standardise each disease variable (higher = worse)
+  mutate(across(all_of(top4_diseases), ~ as.numeric(scale(.x)), .names = "{.col}_z")) %>%
+  
+  # Row-wise mean burden (higher = worse)
+  mutate(burden_zmean = rowMeans(across(ends_with("_z")), na.rm = TRUE)) %>%
+  
+  # Compute health burden index (high = worse)
+  mutate(
+    health_burden_0_100      = rescale(burden_zmean, to = c(0, 100)),  # high = better
+    health_burden_decile     = ntile(health_burden_0_100, 10),
+    health_burden_percentile = round(percent_rank(health_burden_0_100) * 100, 0)
+  )
+```
+
+
+```{r}
+map_heal_burden_wslhd <- sa2_map_2021 %>%
+  inner_join(heal_burden %>% 
+      filter(!sa2_name_2021 %in% exclude_sa2), 
+    by = "sa2_name_2021")
+
+map_lga_wslhd_2021 <- lga_map_2021 %>%
+  filter(lga_name_2021 %in% wslhd_lgas) %>%
+  st_transform(crs = st_crs(map_heal_burden_wslhd))
+```
+
+```{r}
+biv_sem_health <- map_heal_burden_wslhd %>%
+  transmute(
+    sa2_name_2021,
+    lga_name_2021,
+    pop_size,
+    prop_arthritis, 
+    prop_asthma,
+    prop_diabetes,
+    prop_mental_health,
+    geometry,
+    irsd_percentile, 
+    health_burden_percentile,
+    deprivation_percentile = 100 - irsd_percentile
+    # prop_social_housing,
+    # prop_non_social_housing,
+    # prop_overcrowded,
+    # prop_high_crowded,
+    # prop_not_overcrowded
+  ) %>%
+  bi_class(x = deprivation_percentile, y = health_burden_percentile, style = "quantile", dim = 3)
+```
+
+```{r}
+# WGS84 (EPSG:4326) for Leaflet
+biv_df_wgs84 <- st_transform(biv_sem_health, 4326)
+map_lga_wslhd_2021_wgs84 <- st_transform(map_lga_wslhd_2021, 4326)
+
+
+color_palette <- c(
+  "1-1" = "#d3d3d3", # low x, low y
+  "2-1" = "#ba8890",
+  "3-1" = "#9e3547", # high x, low y
+  "1-2" = "#8aa6c2",
+  "2-2" = "#7a6b84", # medium x, medium y
+  "3-2" = "#682a41",
+  "1-3" = "#4279b0", # low x, high y
+  "2-3" = "#3a4e78",
+  "3-3" = "#311e3b" # high x, high y
+)
+
+# Assign fill color per SA2
+biv_df_wgs84$fill_color <- color_palette[as.character(biv_df_wgs84$bi_class)]
+
+# Popup content (EN)
+biv_df_wgs84 <- biv_df_wgs84 %>%
+  mutate(
+    popup_content = sprintf(
+      "<strong>%s</strong><br/>
+      LGA: %s<br/>
+      Population: %s<br/><br/>
+      
+      <strong>Health condition proportions:</strong><br/>
+      Arthritis: %.1f%%<br/>
+      Asthma: %.1f%%<br/>
+      Diabetes: %.1f%%<br/>
+      Mental health: %.1f%%<br/><br/>
+      
+      <strong>Deprivation percentile group: %d</strong><br/>
+      <small>1st is least deprived and 100th is most deprived</small><br/>
+      <small><em>Deprivation percentile is derived by reversing the IRSD percentile</em></small><br/><br/>
+
+      <strong>Health burden percentile group: %d</strong><br/>
+      <small>1st is best and 100th is worst</small><br/>
+      <small><em>Health burden includes the top 4 health conditions</em></small>",
+      
+      sa2_name_2021,
+      lga_name_2021,
+      format(pop_size, big.mark = ","),
+      prop_arthritis * 100,
+      prop_asthma * 100,
+      prop_diabetes * 100,
+      prop_mental_health * 100,
+      deprivation_percentile,
+      health_burden_percentile
+    )
+  )
+
+# Legend with corrected arrow directions (x →, y ↑)
+legend_html <- '
+<div style="padding:10px;background:white;">
+  <div style="display:flex;align-items:center;gap:8px;">
+    <!-- Y-axis label on the left, pointing up -->
+    
+    <div style="writing-mode:vertical-rl; transform:rotate(180deg); text-align:center; font-size:10px;">
+      Health burden (l→h) 
+    </div>
+
+    <!-- 3x3 color grid (top row = high Y; left->right = low→high X) -->
+    <table style="border-collapse:collapse;">
+      <tr>
+        <td style="width:30px;height:30px;background-color:#4279b0;border:1px solid white;"></td>
+        <td style="width:30px;height:30px;background-color:#3a4e78;border:1px solid white;"></td>
+        <td style="width:30px;height:30px;background-color:#311e3b;border:1px solid white;"></td>
+      </tr>
+      <tr>
+        <td style="width:30px;height:30px;background-color:#8aa6c2;border:1px solid white;"></td>
+        <td style="width:30px;height:30px;background-color:#7a6b84;border:1px solid white;"></td>
+        <td style="width:30px;height:30px;background-color:#682a41;border:1px solid white;"></td>
+      </tr>
+      <tr>
+        <td style="width:30px;height:30px;background-color:#d3d3d3;border:1px solid white;"></td>
+        <td style="width:30px;height:30px;background-color:#ba8890;border:1px solid white;"></td>
+        <td style="width:30px;height:30px;background-color:#9e3547;border:1px solid white;"></td>
+      </tr>
+      <tr>
+        <td colspan="3" style="text-align:center;padding-top:5px; font-size:10px;">
+          Deprived (l→h) 
+        </td>
+      </tr>
+    </table>
+  </div>
+</div>
+'
+caption_html <- '<div style="background:white; padding:6px 10px; font-size:12px;">
+  No colour areas represent non-residuals.
+</div>'
+
+# Interactive map
+leaflet(biv_df_wgs84) %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(
+    fillColor   = ~fill_color,
+    fillOpacity = 0.7,
+    color       = "white",
+    weight      = 0.5,
+    popup       = ~popup_content,
+    highlightOptions = highlightOptions(
+      weight = 2, color = "#111827", fillOpacity = 0.9, bringToFront = TRUE
+    ),
+    label = ~sa2_name_2021,
+    labelOptions = labelOptions(
+      style = list("font-weight"="normal", padding="3px 8px"),
+      textsize = "12px",
+      direction = "auto"
+    )
+  ) %>%
+  addPolylines(
+    data   = map_lga_wslhd_2021_wgs84,
+    color  = "#111827",
+    weight = 2,
+    opacity= 1,
+    fillOpacity = 0
+  ) %>%
+  addControl(
+    html = legend_html,
+    position = "bottomright"
+  ) %>% 
+  addControl(html = caption_html, position = "bottomleft")
+```
+
+```{r, warning=FALSE}
+scatter_sem_health <- biv_sem_health %>%
+  st_drop_geometry() %>%
+  transmute(
+    sa2_name_2021,
+    lga_name_2021,
+    deprivation_percentile      = suppressWarnings(as.numeric(deprivation_percentile)),
+    health_burden_percentile    = suppressWarnings(as.numeric(health_burden_percentile)), 
+    pop_size                    = suppressWarnings(as.numeric(pop_size)),
+    bi_class = as.character(bi_class),
+    prop_arthritis, prop_asthma, prop_diabetes, prop_mental_health
+  ) %>%
+  filter(is.finite(deprivation_percentile),
+         is.finite(health_burden_percentile),
+         is.finite(pop_size))
+
+
+pal <- c(
+  "1-1"="#d3d3d3","2-1"="#ba8890","3-1"="#9e3547",
+  "1-2"="#8aa6c2","2-2"="#7a6b84","3-2"="#682a41",
+  "1-3"="#4279b0","2-3"="#3a4e78","3-3"="#311e3b"
+)
+na_col <- "#bdbdbd"
+col_vec <- pal[scatter_sem_health$bi_class]
+col_vec[is.na(col_vec)] <- na_col
+
+
+size_px <- rescale(scatter_sem_health$pop_size, to = c(20, 50)) 
+
+hover_txt <- paste0(
+  "<b>", scatter_sem_health$sa2_name_2021, "</b><br>",
+  "LGA: ", scatter_sem_health$lga_name_2021, "<br>",
+  "Population: ", comma(scatter_sem_health$pop_size), 
+  
+  "<br><br>",
+  
+  "Health condition proportions:<br>",
+  "Arthritis: ", percent(scatter_sem_health$prop_arthritis, 0.1), " | ",
+  "Asthma: ",   percent(scatter_sem_health$prop_asthma,   0.1), " | ",
+  "Diabetes: ", percent(scatter_sem_health$prop_diabetes, 0.1), " | ",
+  "Mental health: ", percent(scatter_sem_health$prop_mental_health, 0.1), 
+  
+  "<br><br>",
+  
+  "Deprivation percentile group: ", round(scatter_sem_health$deprivation_percentile), 
+  "<br>1st least deprived → 100th most deprived",
+  "<br>Deprivation percentile is derived by reversing the IRSD percentile<br><br>",
+  
+  "Health burden percentile group: ", round(scatter_sem_health$health_burden_percentile), 
+  "<br>1st best → 100th worst",
+  "<br>Health burden includes the top 4 health conditions"
+)
+
+
+plot_ly(type = "scatter", mode = "markers") %>%
+  add_markers(
+    x = scatter_sem_health$deprivation_percentile,
+    y = scatter_sem_health$health_burden_percentile, 
+    text = hover_txt, hovertemplate = "%{text}<extra></extra>",
+    marker = list(
+      size = size_px,
+      color = col_vec,
+      line = list(color = "white", width = 0.6),
+      opacity = 0.85
+    ),
+    showlegend = FALSE
+  ) %>%
+  layout(
+    title = list(text = "Socioeconomic Disadvantage vs Health Burden (WSLHD SA2s)"),
+    xaxis = list(title = "Deprivation Percentile", zeroline = FALSE),
+    yaxis = list(title = "Health Burden Percentile", zeroline = FALSE),
+    hovermode = "closest",
+    plot_bgcolor = "#ffffff",
+    paper_bgcolor = "#ffffff",
+    hoverlabel = list(align = "left") 
+  )
+
+
+```
+
+```{r}
+ggsave("wslhd_healcons_1.png", wslhd_healcons_1,
+     width = 12, height = 9, units = "in", dpi = 600, bg = "white")
+```
+
+
+```{r}
+# p_map <- ggplot(biv_sem_health) +
+#   geom_sf(aes(fill = bi_class), colour = "white", linewidth = 0.15) +
+#   bi_scale_fill(pal = "DkViolet", dim = 3, guide = "none") +
+#   geom_sf(data = map_lga_wslhd_2021, fill = NA, color = "#111827", linewidth = 0.4) +
+#   labs(
+#     title    = "Socioeconomic Disadvantage and Health Burden across SA2s in WSLHD",
+#     caption  = "White areas represent non-residentials") +
+#   theme_minimal(base_size = 12) +
+#   theme(
+#     panel.grid          = element_blank(),
+#     axis.text           = element_blank(), axis.ticks = element_blank(),
+#     axis.title          = element_blank(),
+#     legend.position     = "none",
+#     plot.title          = element_markdown(size = 18, face = "bold", hjust = 0.5),
+#     plot.subtitle       = element_text(size = 10, hjust = 0.5),
+#     plot.title.position = "plot",
+#     plot.caption        = element_text(size = 10, hjust = 0.5, vjust = 10),
+#     )
+# 
+# p_leg <- bi_legend(
+#   pal  = "DkViolet",
+#   dim  = 3,
+#   xlab = "Deprivation",
+#   ylab = "Health Burden",
+#   size = 6  
+# ) +
+#   theme(
+#     plot.background  = element_rect(fill = "white", colour = "#111827", linewidth = 0.7),
+#     plot.margin      = margin(6, 6, 6, 6) 
+#   )
+# 
+# 
+# ggdraw() +
+#   draw_plot(p_map, 0, 0, 1, 1) +
+#   draw_plot(p_leg,     
+#                      x = 0.18, 
+#                      y = 0.12,  
+#                      width  = 0.15,
+#                      height = 0.15)  
+```
+
+
+```{r}
+top_targets <- biv_df %>%
+  filter(bi_class == "3-3") %>%
+  arrange(desc(pop_size)) %>%
+  select(sa2_name_2021, 
+         lga_name_2021,
+         pop_size, 
+         ses_index, 
+         burden_index, 
+         prop_arthritis,
+         prop_asthma,
+         prop_diabetes,
+         prop_mental_health,
+         prop_social_housing,
+         prop_non_social_housing,
+         prop_overcrowded,
+         prop_high_crowded,
+         prop_not_overcrowded)
+
+top_targets_bt <- top_targets %>%
+  filter(lga_name_2021 == "Blacktown")
+
+share_pop <- sum(top_targets_bt$pop_size, na.rm = TRUE) / sum(map_heal_burden4_wslhd$pop_size, na.rm = TRUE)
+share_pop
+
+map_heal_burden4_bt <- map_heal_burden4_wslhd %>%
+  filter(lga_name_2021 == "Blacktown")
+
+share_pop_bt <- sum(top_targets_bt$pop_size, na.rm = TRUE) / sum(map_heal_burden4_bt$pop_size, na.rm = TRUE)
+share_pop_bt
+```
+
+```{r}
+p_basic <- ggplot(top_targets, aes(x = prop_social_housing, y = prop_overcrowded)) +
+  geom_point(alpha = 0.8) +
+  geom_smooth(method = "lm", se = FALSE, linetype = "dashed", linewidth = 0.7) +
+  scale_x_continuous(labels = percent_format(accuracy = 0.1), name = "Social housing (%)") +
+  scale_y_continuous(labels = percent_format(accuracy = 0.1), name = "Overcrowded (%)") +
+  labs(title = "Social housing vs Overcrowding — basic trend") +
+  theme_minimal(base_size = 12)
+
+p_basic + geom_point(aes(size = pop_size), alpha = 0.75) + 
+  scale_size_area(max_size = 14, name = "Population")
+```
+
+```{r}
+ggsave("wslhd_healcons_2.png", wslhd_healcons_2,
+     width = 12, height = 9, units = "in", dpi = 600, bg = "white")
+```
+
+```{r}
+ggplot(
+  data = map_heal_burden4_wslhd %>%
+    mutate(
+      overcrowded_band = cut(
+        prop_overcrowded,                      
+        breaks = c(-Inf, 0.02, 0.04, 0.06, 0.08, Inf),
+        labels = c("<2%", "2–4%", "4–6%", "6–8%", "≥8%"),
+        right  = FALSE
+      )
+    ),
+  mapping = aes(fill = overcrowded_band)
+) +
+  geom_sf(colour = "white", linewidth = 0.25, lineend = "round") +
+  geom_sf(data = map_lga_wslhd_2021, fill = NA, color = "#111827", linewidth = 0.4) +
+  scale_fill_manual(
+    name   = "Overcrowded",
+    values = c(
+      "<2%"  = "#00204a",
+      "2–4%" = "#005792",
+      "4–6%" = "#439755",
+      "6–8%" = "#F59E0B",
+      "≥8%"  = "#D46C4E" 
+    ),
+    drop    = FALSE,
+    na.value = "grey85"
+  ) +
+  labs(
+    title    = "Overcrowding by SA2 in WSLHD",
+    subtitle = "Dwellings requiring one or more bedrooms are considered overcrowded",
+    caption  = "White areas represent non-residentials"
+  ) +
+  coord_sf(datum = NA) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid          = element_blank(),
+    axis.text           = element_blank(), axis.ticks = element_blank(),
+    axis.title          = element_blank(),
+    legend.position     = "bottom",
+    plot.title          = element_markdown(size = 18, face = "bold", hjust = 0.5),
+    plot.subtitle       = element_text(size = 10, hjust = 0.5),
+    plot.title.position = "plot",
+    plot.caption        = element_text(size = 10, hjust = 0.5, vjust = 2)
+  )
+```
+
+```{r}
+housing_health_df <- map_heal_burden4_wslhd %>% st_drop_geometry()
+
+housing_health_df <- housing_health_df %>%
+  mutate(
+    health_burden = health_burden4_0_100 / 100,
+    ses_disadvan  = ses_index_0_100 / 100
+  ) %>%
+  filter(!is.na(prop_social_housing), !is.na(health_burden), !is.na(ses_disadvan)) %>%
+  mutate(
+    ses_band = cut(
+      ses_disadvan,
+      breaks = quantile(ses_disadvan, probs = c(0, .25, .5, .75, 1), na.rm = TRUE),
+      include.lowest = TRUE,
+      labels = c("Low", "Middle", "High", "Very high")
+    )
+  )
+```
+
+```{r}
+wslhd_healcons_3 <- ggplot(housing_health_df, aes(x = prop_social_housing, y = health_burden)) +
+  geom_point(aes(colour = ses_band, size = pop_size), alpha = 0.85) +
+  scale_colour_manual(
+    values = c("Low" = "#005792", "Middle" = "#439755",
+               "High" = "#F59E0B", "Very high" = "#D46C4E"),
+    drop   = FALSE
+  ) +
+  scale_size_area(max_size = 16, name = NULL) +
+  guides(size = "none") +  
+  scale_x_continuous(labels = percent_format(accuracy = 0.1),
+                     name = "Social Housing Proportion") +
+  scale_y_continuous(labels = percent_format(accuracy = 0.1),
+                     name = "Health Burden Index") +
+  labs(
+    title    = "Social Housing and Health Burden in WSLHD",
+    subtitle = "Note: Bubble size represents population size | Socioeconomic disadvantage index shown in quartiles"
+  ) +
+  theme_minimal(base_size = 12) +
+  guides(colour = guide_legend(
+    title = "SE Disadvantage",
+    override.aes = list(size = 8) 
+  )) +
+  theme(
+    legend.position     = "right",
+    plot.title          = element_markdown(size = 18, face = "bold", hjust = 0.5),
+    plot.subtitle       = element_text(size = 10, hjust = 0.5),
+    plot.title.position = "plot",
+    plot.caption        = element_text(size = 10, hjust = 0.5, vjust = 2)
+    )
+```
+
+```{r}
+ggsave("wslhd_healcons_3.png", wslhd_healcons_3,
+     width = 12, height = 9, units = "in", dpi = 600, bg = "white")
+```
+
+```{r}
+wslhd_healcons_4 <- ggplot(housing_health_df %>% 
+         filter(sa2_name_2021 %in% top_targets$sa2_name_2021), 
+         aes(x = prop_social_housing, y = health_burden)) +
+  geom_point(aes(colour = ses_band, size = pop_size), alpha = 0.85) +
+  scale_colour_manual(
+    values = c("Low" = "#005792", "Middle" = "#439755",
+               "High" = "#F59E0B", "Very high" = "#D46C4E"),
+    drop   = FALSE
+  ) +
+  scale_size_area(max_size = 16, name = NULL) +
+  guides(size = "none") +  
+  scale_x_continuous(labels = percent_format(accuracy = 0.1),
+                     name = "Social Housing Proportion") +
+  scale_y_continuous(labels = percent_format(accuracy = 0.1),
+                     name = "Health Burden Index") +
+  labs(
+    title    = "Social Housing and Health Burden in WSLHD",
+    subtitle = "Note: Bubble size represents population size | Socioeconomic disadvantage index shown in quartiles"
+  ) +
+  theme_minimal(base_size = 12) +
+  guides(colour = guide_legend(
+    title = "SE Disadvantage",
+    override.aes = list(size = 8) 
+  )) +
+  theme(
+    legend.position     = "right",
+    plot.title          = element_markdown(size = 18, face = "bold", hjust = 0.5),
+    plot.subtitle       = element_text(size = 10, hjust = 0.5),
+    plot.title.position = "plot",
+    plot.caption        = element_text(size = 10, hjust = 0.5, vjust = 2)
+    )
+```
+
+```{r}
+ggsave("wslhd_healcons_4.png", wslhd_healcons_4,
+     width = 12, height = 9, units = "in", dpi = 600, bg = "white")
+```
+
+```{r}
+top_sa2_df <- housing_health_df %>%
+  filter(sa2_name_2021 %in% top_targets$sa2_name_2021) %>%
+  mutate(target_type = if_else(sa2_name_2021 %in% top_targets_bt$sa2_name_2021,
+                               "Blacktown SA2s", "Other SA2s"))
+
+wslhd_healcons_5 <- ggplot(top_sa2_df, aes(x = prop_social_housing, y = health_burden)) +
+  geom_point(
+    aes(colour = ses_band, size = pop_size, shape = target_type),
+    alpha = 0.85
+  ) +
+  scale_colour_manual(
+    values = c("Low" = "#005792", "Middle" = "#439755",
+               "High" = "#F59E0B", "Very high" = "#D46C4E"),
+    drop = FALSE
+  ) +
+  scale_shape_manual(
+    values = c("Blacktown SA2s" = 16, "Other SA2s" = 17),
+    name   = "SA2s"
+  ) +
+  scale_size_area(max_size = 16, name = NULL) +
+  guides(size = "none") +
+  scale_x_continuous(labels = percent_format(accuracy = 0.1),
+                     name = "Social Housing Proportion") +
+  scale_y_continuous(labels = percent_format(accuracy = 0.1),
+                     name = "Health Burden Index") +
+  labs(
+    title    = "Social Housing and Health Burden in WSLHD",
+    subtitle = "Bubble size represents population size | Socioeconomic disadvantage index shown in quartiles"
+  ) +
+  theme_minimal(base_size = 12) +
+  guides(
+    colour = guide_legend(title = "SE Disadvantage",
+                          override.aes = list(size = 8)),
+    shape  = guide_legend(override.aes = list(size = 6, alpha = 1))
+  ) +
+  theme(
+    legend.position     = "right",
+    plot.title          = element_markdown(size = 18, face = "bold", hjust = 0.5),
+    plot.subtitle       = element_text(size = 10, hjust = 0.5),
+    plot.title.position = "plot",
+    plot.caption        = element_text(size = 10, hjust = 0.5, vjust = 2)
+  )
+
+```
+
+```{r}
+ggsave("wslhd_healcons_5.png", wslhd_healcons_5,
+     width = 12, height = 9, units = "in", dpi = 600, bg = "white")
+```
+
+```{r}
+top4_healcons_dat <- sem_wslhd_2021 %>%
+  filter(sa2_name_2021 %in% top_targets$sa2_name_2021) %>%
+  mutate(order_mean = rowMeans(across(all_of(top4_diseases)), na.rm = TRUE)) %>%
+  select(sa2_name_2021, order_mean, all_of(top4_diseases)) %>%
+  pivot_longer(all_of(top4_diseases), names_to = "condition", values_to = "prop") %>%
+  mutate(
+    condition = recode(condition,
+      prop_arthritis = "Arthritis",
+      prop_asthma = "Asthma",
+      prop_diabetes = "Diabetes",
+      prop_mental_health = "Mental health"
+    ),
+    sa2_name_2021 = fct_reorder(sa2_name_2021, order_mean, .desc = TRUE)
+  )
+
+range_dat <- top4_healcons_dat %>%
+  group_by(sa2_name_2021) %>%
+  summarise(ymin = min(prop, na.rm = TRUE),
+            ymax = max(prop, na.rm = TRUE),
+            .groups = "drop")
+```
+
+```{r}
+wslhd_healcons_6 <- ggplot() +
+  geom_linerange(data = range_dat,
+                 aes(x = sa2_name_2021, ymin = ymin, ymax = ymax),
+                 colour = "grey85", linewidth = 1) +
+  geom_point(data = top4_healcons_dat,
+             aes(x = sa2_name_2021, y = prop, colour = condition),
+             position = position_dodge(width = 0.6), size = 3) +
+  coord_flip() +
+  scale_color_manual(values = c("Arthritis"     = "#F8766D",
+                               "Asthma"         = "#7CAE00",
+                               "Diabetes"       = "#00BFC4",
+                               "Mental health"  = "#C77CFF"),
+    name = NULL
+  ) +
+  scale_y_continuous(labels = percent_format(accuracy = 0.1)) +
+  labs(
+    title = "Top Four Most Prevalent Health Conditions in High-Disadvantage SA2s",
+    subtitle = "Note: Health condition data are based on self-reported data",
+    x = NULL, y = NULL, colour = NULL
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.major.y = element_blank(),
+    axis.text.y        = element_text(size = 12, color = "black"),
+    axis.text.x        = element_text(size = 12, color = "black"),
+    plot.title         = element_markdown(size = 18, face = "bold", hjust = 0.5),
+    plot.subtitle      = element_text(size = 12, color = "black", hjust = 0.11),
+    legend.text        = element_text(size = 12),
+    legend.position = "bottom",
+    legend.key.size    = unit(0.8, "cm")          
+  )
+
+```
+
+```{r}
+ggsave("wslhd_healcons_6.png", wslhd_healcons_6,
+     width = 12, height = 9, units = "in", dpi = 600, bg = "white")
+```
+
+```{r}
+hl_sa2 <- c("Lethbridge Park - Tregear", "Bidwill - Hebersham - Emerton")
+
+blacktown_lga <- lga_map_2021 %>%
+  filter(lga_name_2021 == "Blacktown") %>%
+  st_transform(st_crs(sa2_map_2021))
+
+plot_bk <- map_heal_burden4_bt %>%
+  mutate(
+    fill_grp = case_when(
+      sa2_name_2021 %in% hl_sa2 ~ "Very high-burden SA2s",
+      sa2_name_2021 %in% top_targets$sa2_name_2021 ~ "High-burden SA2s",
+      TRUE ~ "Other SA2s"
+    ),
+    fill_grp = factor(fill_grp, levels = c("Very high-burden SA2s",
+                                           "High-burden SA2s",
+                                           "Other SA2s"))
+  ) 
+```
+
+```{r}
+wslhd_healcons_7 <- ggplot(plot_bk) +
+  geom_sf(aes(fill = fill_grp), colour = "black", linewidth = 0.25) +
+  geom_sf(data = blacktown_lga, fill = NA, colour = "#111827", linewidth = 0.6) +
+  scale_fill_manual(values = c("Very high-burden SA2s"      = "#ae3a4e",  
+                               "High-burden SA2s"           = "#bc7c8f",  
+                               "Other SA2s"                 = "grey90"), 
+                    breaks = c("Very high-burden SA2s", "High-burden SA2s"), 
+                    name = NULL) +
+  coord_sf(datum = NA) +
+  labs(
+    title = NULL
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid = element_blank(),
+    axis.text  = element_blank(), 
+    axis.ticks = element_blank(), 
+    axis.title = element_blank(),
+    legend.text    = element_text(size = 16, color = "black"),
+    legend.position = "bottom"
+    )
+```
+
+```{r}
+ggsave("wslhd_healcons_7.png", wslhd_healcons_7,
+     width = 12, height = 9, units = "in", dpi = 600, bg = "white")
+```
+
+```{r}
+sa2_levels <- levels(fct_reorder(
+  top4_healcons_dat$sa2_name_2021,
+  with(top4_healcons_dat, ave(prop, sa2_name_2021, FUN = mean)),
+  .desc = TRUE
+))
+
+sa2_labels <- setNames(
+  ifelse(sa2_levels %in% hl_sa2,
+         paste0("<span style='color:#ae3a4e;font-weight:700;'>", sa2_levels, "</span>"),
+         paste0("<span style='color:#bc7c8f;'>", sa2_levels, "</span>")
+  ),
+  sa2_levels
+)
+```
+
+```{r}
+wslhd_healcons_8 <- ggplot() +
+  geom_linerange(data = range_dat,
+                 aes(x = sa2_name_2021, ymin = ymin, ymax = ymax),
+                 colour = "grey85", linewidth = 1) +
+  geom_point(data = top4_healcons_dat,
+             aes(x = sa2_name_2021, y = prop, colour = condition),
+             position = position_dodge(width = 0.6), size = 3) +
+  coord_flip() +
+  scale_color_manual(values = c(
+      "Arthritis"     = "#F8766D",
+      "Asthma"        = "#7CAE00",
+      "Diabetes"      = "#00BFC4",
+      "Mental health" = "#C77CFF"
+    ),
+    name = NULL
+  ) +
+  scale_x_discrete(breaks = sa2_levels, labels = sa2_labels) +
+  scale_y_continuous(labels = percent_format(accuracy = 0.1)) +
+  labs(
+    title = "Top Four Most Prevalent Health Conditions in High-Disadvantage SA2s",
+    subtitle = "Note: Health condition data are based on self-reported data",
+    x = NULL, y = NULL, colour = NULL
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.major.y = element_blank(),
+    axis.text.y = element_markdown(size = 12, face = "bold"),
+    axis.text.x = element_text(size = 12, color = "black"),
+    plot.title  = element_markdown(size = 18, face = "bold", hjust = 0.5),
+    plot.subtitle      = element_text(size = 12, color = "black", hjust = 0.1),
+    legend.text = element_text(size = 12),
+    legend.position = "bottom",
+    legend.key.size = unit(0.8, "cm")
+  )
+```
+
+```{r}
+ggsave("wslhd_healcons_8.png", wslhd_healcons_8,
+     width = 12, height = 9, units = "in", dpi = 600, bg = "white")
+```
