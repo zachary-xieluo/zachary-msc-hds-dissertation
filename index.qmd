@@ -4,8 +4,6 @@ format:
     remove-header-space: true
     css:
       - assets/styles.css
-    include-after-body:
-      - assets/scripts.html
     toc: false
 
 cr-style:
