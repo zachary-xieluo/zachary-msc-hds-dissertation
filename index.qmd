@@ -1,4 +1,5 @@
 ---
+title: "People and Communities in Western Sydney"
 format:
   closeread-html:
     remove-header-space: true
