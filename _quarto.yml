@@ -27,3 +27,7 @@ website:
         href: https://github.com/zachary-xieluo/zachary-msc-hds-dissertation
         aria-label: GitHub
         target: _blank
+        
+format:
+  html:
+    relative-resources: true
