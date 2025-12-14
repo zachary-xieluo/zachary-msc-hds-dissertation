@@ -1,7 +1,28 @@
-.Rproj.user
+# -------------------------
+# R / RStudio
+# -------------------------
+.Rproj.user/
 .Rhistory
 .RData
 .Ruserdata
 
-/.quarto/
+# -------------------------
+# OS
+# -------------------------
 .DS_Store
+Thumbs.db
+
+# -------------------------
+# Quarto / knitr cache (safe to ignore)
+# -------------------------
+.quarto/
+*_cache/
+**/*_cache/
+
+# -------------------------
+# Optional: ignore temp/log
+# -------------------------
+*.log
+*.tmp
+
+/.quarto/
