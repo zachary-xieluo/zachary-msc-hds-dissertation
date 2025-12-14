@@ -1,24 +1,7 @@
-# RStudio project settings
-.Rproj.user/
+.Rproj.user
 .Rhistory
 .RData
 .Ruserdata
 
-# System files
-.DS_Store
-Thumbs.db
-
-# Cache folders (knitr / quarto)
-*_cache/
-*/_cache/
-*/cache/
-
-# Quarto cache / artifacts (safe to ignore)
-.quarto/
-_site/
-*_files/
-
-# Figures and large outputs
-**/outputs/
-outputs_reports/
 /.quarto/
+.DS_Store
