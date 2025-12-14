@@ -1,9 +1,6 @@
 project:
   type: website
   output-dir: docs
-  render:
-    - index.qmd
-    - dashboard.qmd
     
 website:
   title: "People and Communities in Western Sydney"
@@ -28,6 +25,7 @@ website:
         aria-label: GitHub
         target: _blank
         
+
 format:
   html:
     relative-resources: true
