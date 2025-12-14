@@ -15,7 +15,7 @@ library(purrr)
 # Read datasets
 demographics_nsw_2021 <- read.csv("demographics_nsw_2021.csv")
 socioeconomics_nsw_2021 <- read.csv("socioeconomics_nsw_2021.csv")
-health_conditions_nsw_2021 <- read.csv("health_conditions_nsw_2021.csv")
+healcons_nsw_2021 <- read.csv("healcons_nsw_2021.csv")
 ```
 
 ```{r}
@@ -26,11 +26,12 @@ lock_cols <- c("pop_size", "in_wslhd", "in_metro")
 cencus_nsw_2021 <- list(
   demographics_nsw_2021,                                
   socioeconomics_nsw_2021 %>% select(-any_of(lock_cols)),  
-  health_conditions_nsw_2021 %>% select(-any_of(lock_cols))
+  healcons_nsw_2021 %>% select(-any_of(lock_cols))
 ) %>%
   reduce(left_join, by = "sa2_name_2021")
-
-# write_csv(cencus_nsw_2021, "cencus_nsw_2021.csv")
 ```
 
+```{r}
+# write_csv(cencus_nsw_2021, "cencus_nsw_2021.csv")
+```
 

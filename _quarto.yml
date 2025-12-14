@@ -1,0 +1,29 @@
+project:
+  type: website
+  output-dir: docs
+  render:
+    - index.qmd
+    - dashboard.qmd
+    
+website:
+  title: "People and Communities in Western Sydney"
+  back-to-top-navigation: true
+  page-navigation: true
+  search: true 
+  navbar:
+    left:
+      - text: "Story"
+        href: index.qmd
+        icon: book
+      - text: "Dashboard"
+        href: dashboard.qmd
+        icon: speedometer
+    right:
+      - icon: linkedin
+        href: https://www.linkedin.com/in/zachary-xie/
+        aria-label: LinkedIn
+        target: _blank  
+      - icon: github
+        href: https://github.com/zachary-xieluo/zachary-msc-hds-dissertation
+        aria-label: GitHub
+        target: _blank

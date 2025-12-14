@@ -6,81 +6,22 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r, include=FALSE}
 library(dplyr)
 library(tidyr)
-library(stringr)
 library(strayr)
 library(sf)
 library(ggplot2)
-library(patchwork)
-library(knitr)
-library(kableExtra)
-library(purrr)
 library(rlang)
+library(scales)
+library(patchwork)
 ```
 
 
-## Key Takeaways
-
-### Age Structure
-
-- The population of WSLHD is mainly concentrated in three age groups: 0–9, 30–39, and 60+.
-
-- Older adults are a key demographic, particularly in The Hills Shire, where more than half of the SA2s have over 20% of residents aged 60 and above.
-
-- Glenhaven shows the highest level of ageing, with more than 30% of its population aged 60 and above.
-
-- Young families are concentrated in northern Blacktown and along the southern boundary of The Hills Shire, where the proportions of couple-with-children, one-parent families, 20–39-year-olds, and 0–9-year-olds are all at their highest levels.
-
-- *Suggested next step:* Investigate ageing hotspots in The Hills Shire and areas with high concentrations of young families in northern Blacktown.
-
----
-
-### Cultural Diversity
-
-- WSLHD shows significant diversity, with most SA2s having 40–60% of residents born overseas and speaking a non-English language at home.
-
-- Parramatta and Cumberland stand out with particularly high proportions of overseas-born and non-English-speaking populations.
-
-- *Suggested next step:* Deep dive into analysis of the migrant composition within WSLHD (particularly Parramatta and Cumberland) to better understand settlement patterns.
-
----
-
-### Socioecnomics
-
-- Higher education and high-skilled occupations (managers or professionals) are concentrated in northern Blacktown, southern The Hills Shire, and Parramatta, where bachelor’s degree attainment and professional employment proportions are relatively high.
-
-- Lower education levels and other occupations are concentrated in southern Blacktown and Cumberland, indicating socio-economic disadvantage.
-
-- Household income in WSLHD is mainly distributed across three groups:
-
-  - Very low income: weekly $1–$999
-  - Middle income: $1,500–$2,499
-  - Very high income: more than $3,000
-  
-- The Hills Shire stands out, with almost all SA2s having more than 10% of households earning a very high income each week.
-
-- *Suggested next step:* Map socio-economic disparities, focusing on southern Blacktown and Cumberland as priority areas.
-
----
-
-### Health Profile
-
-- WSLHD overall shows a relatively healthy population profile, with approximately 80% of residents reporting no health conditions.
-
-- Among the ten selected conditions, arthritis, asthma, diabetes, and mental health conditions are the most prevalent in WSLHD and are also the most common across the NSW metropolitan region.
-
-- Southern Blacktown is a key high-burden area, consistently showing the highest proportionacross these four conditions.
-
-- *Suggested next step:* conduct a deep-dive analysis into the health profiles of residents in southern Blacktown.
-
----
-
-## Exploratory Data Analysis
-
 ```{r, include=FALSE}
-# Read datasets
+# ========Read datasets ========
+
+# Read variables
 cencus_nsw_2021 <- read.csv("cencus_nsw_2021.csv")
 
-# Read in the SA2-to-LGA-to-LHD mapping table
+# Read in the SA2-LGA-LHD mapping table
 geo_nsw_2021 <- read.csv("sa2_lga_lhd_nsw_2021.csv") 
 
 # Read SA2 map
@@ -99,16 +40,21 @@ lhd_map_2023 <- read_absmap("nsw_lhd2023")
 ```
 
 ```{r, include=FALSE}
+# ======== Check non-residential SA2s ========
+
+# Arrange SA2s by population size in ascending order (smallest first)
 check_pop_size <- cencus_nsw_2021 %>%
   arrange(pop_size)
 
+# Display the first 30 SA2s (lowest populations)
 head(check_pop_size, 30)
-```
 
-```{r, include=FALSE}
 # Extract non-residential from check_pop_size
 non_res_sa2 <- check_pop_size %>%
-  arrange(pop_size) %>%       
+  arrange(pop_size) %>%
+  
+  # Take the first 20 SA2s, 
+  # Their population was below 100 and considered non-residential
   slice_head(n = 20) %>%            
   pull(sa2_name_2021) %>%           
   as.list()
@@ -127,22 +73,15 @@ cencus_nsw_2021_clean <- cencus_nsw_2021 %>%
 ```
 
 ```{r, include=FALSE}
-# --- Create a WSLHD map dataset for plot ---
+# --- Prepare spatial datasets for wslhd ---
 
 # Define LGAs in WSLHD
 wslhd_lgas <- c("Blacktown","Parramatta","Cumberland","The Hills Shire")
 
-# Filter SA2s to WSLHD
+# Integrate wslhd SA2 geometries with wslhd census data
 map_wslhd_2021 <- sa2_map_2021 %>% 
   left_join(cencus_nsw_2021_clean, by = "sa2_name_2021") %>%
   filter(in_wslhd == 1)
-
-#  Build a union polygon of populated SA2s
-sa2_union_nsw_2021 <- map_wslhd_2021 %>%
-  
-  # Exclude SA2s where pop_size is NA before union
-  filter(!is.na(pop_size)) %>%
-  st_union()
 
 # Extract LGA boundaries for WSLHD
 lga_wslhd_2021 <- lga_map_2021 %>%
@@ -151,7 +90,7 @@ lga_wslhd_2021 <- lga_map_2021 %>%
 ```
 
 ```{r, include=FALSE}
-# --- Create a metro map dataset for plot ---
+# ======== Prepare spatial datasets for metropolitan  ========
 
 # Keep six metropolitan LHDs
 metro_nsw_lhd <- c(
@@ -160,38 +99,44 @@ metro_nsw_lhd <- c(
   "Sydney","Western Sydney"
 )
 
-# SA2 set in the six metropolitan LHDs
+# Integrate metropolitan SA2 geometries with metropolitan census data
+map_metro_2021 <- sa2_map_2021 %>% 
+  left_join(cencus_nsw_2021_clean, by = "sa2_name_2021") %>%
+  filter(in_metro == 1)
+
+# --- SA2s inside metropolitan LHDs → geometry for mask and bbox ---
+# Select metropolitan SA2 from mapping list
 sa2_set_2021 <- geo_nsw_2021 %>%
   filter(nsw_lhd_name %in% metro_nsw_lhd) %>%
   pull(sa2_name_2021) %>%
   unique()
 
-# SA2 geometries (metro only)
+# Join metropolitan SA2 geometries
 sa2_metro_2021 <- sa2_map_2021 %>%
   filter(sa2_name_2021 %in% sa2_set_2021)
 
-# LGA set in the six metropolitan LHDs
+
+# --- LGAs inside metropolitan LHDs → geometry for overlay ---
+# Select metropolitan LGA from mapping list
 lga_set <- geo_nsw_2021 %>%
   filter(nsw_lhd_name %in% metro_nsw_lhd) %>%
   pull(lga_name_2021) %>%
   unique()
 
-# LGA/LHD geometries (metro only)
+# Join metropolitan LGA geometries
 lga_metro_2021 <- lga_map_2021 %>%
   filter(lga_name_2021 %in% lga_set)
 
+# --- LHD geometry for overlay ---
+# Join metropolitan LHD geometries
 lhd_metro_2021 <- lhd_map_2023 %>%
   filter(nsw_lhd_name %in% metro_nsw_lhd)
 
-# Filter SA2s to WSLHD
-map_metro_2021 <- sa2_map_2021 %>% 
-  left_join(cencus_nsw_2021_clean, by = "sa2_name_2021") %>%
-  filter(in_metro == 1)
-
-# make sure CRS matches SA2
+# ---Align CRS to SA2 layer to ensure overlays line up ---
 lga_metro_2021 <- st_transform(lga_metro_2021, st_crs(sa2_metro_2021))
 lhd_metro_2021 <- st_transform(lhd_metro_2021, st_crs(sa2_metro_2021))
 
+# --- Build a metro mask from SA2s and clip LGA/LHD to the metro extent ---
 # union of metro SA2 as clipping mask
 metro_mask <- sa2_metro_2021 %>%
   st_union() %>%
@@ -206,20 +151,30 @@ bbox <- st_bbox(sa2_metro_2021)
 ```
 
 ```{r, include=FALSE}
-# Build a long-format sf from a wide sf, safe for multiple regions (WSLHD + Metro)
-# - Drops geometry, pivots selected numeric variables into long format
-# - Adds a tag suffix to facet and value column names for easier coexistence
-build_long_sf_tag <- function(map_sf,
-                              id_col,
+# ======== Create a data converting function  ========
+# Standardise the recurring “wide → long → map” process 
+
+build_long_sf_tag <- function(
+                              # Containing SA2 attributes and geometry
+                              map_sf,               
+                              
+                              # unique id column used to rejoin geometry (sa2_name_2021)
+                              id_col, 
+                              
+                              # Pivot into long form (indicators to facet)
                               vars,
-                              tag        = NULL,          # e.g. "wslhd" or "metro"
-                              facet_name = NULL,          # optional custom facet column name
-                              value_name = NULL) {        # optional custom value column name
-  # 0) Basic checks
+                              
+                              # wslhd or metro
+                              tag = NULL,  
+                              
+                              facet_name = NULL,  # custom facet column name
+                              value_name = NULL   # custom value column name
+                              ) {                     
+  # Basic checks
   stopifnot(inherits(map_sf, "sf"))
   stopifnot(id_col %in% names(map_sf))
 
-  # 1) Keep only variables that exist, and only numeric ones
+  # Keep only variables that exist, and only numeric ones
   vars <- intersect(vars, names(map_sf))
   if (length(vars) == 0) {
     stop("None of the requested vars exist in `map_sf`.")
@@ -230,13 +185,13 @@ build_long_sf_tag <- function(map_sf,
     stop("None of the requested vars are numeric in `map_sf`.")
   }
 
-  # 2) Dynamically name facet/value columns (tagged if provided)
+  # Dynamically name facet/value columns 
   facet_col <- facet_name %||%
     if (!is.null(tag)) paste0("facet_var_", tag) else "facet_var"
   value_col <- value_name %||%
     if (!is.null(tag)) paste0("value_", tag) else "value"
 
-  # 3) Wide -> long
+  # Wide -> long
   long_df <- map_sf %>%
     st_drop_geometry() %>%
     select(all_of(c(id_col, vars))) %>%
@@ -249,7 +204,7 @@ build_long_sf_tag <- function(map_sf,
       !!facet_col := factor(.data[[facet_col]], levels = vars)
     )
 
-  # 4) Join geometry back and return sf
+  # Join geometry back and return sf
   long_sf <- long_df %>%
     left_join(st_as_sf(map_sf[, c(id_col, "geometry")]), by = id_col) %>%
     st_as_sf()
@@ -262,8 +217,10 @@ build_long_sf_tag <- function(map_sf,
 }
 ```
 
-
 ```{r, include=FALSE}
+# ======== Create a plotting map function  ========
+# Produce faceted SA2 choropleths
+
 facet_sa2_maps <- function(
   map_sf,                 # sf with attributes to plot (already filtered to region)
   vars,                   # character vector of numeric columns to facet
@@ -274,14 +231,14 @@ facet_sa2_maps <- function(
   id_col      = "sa2_name_2021",
   tag         = NULL,     # "wslhd", "metro"
   
-  # overlays (optional, but recommended)
+  # overlays
   lga_sf      = NULL,     # WSLHD: LGA; Metro: clipped LGA layer
   lhd_sf      = NULL,     # Metro only: clipped LHD layer
   bbox        = NULL,     # Metro only: named vector from st_bbox()
   
   # legend & scale
   legend_name = "Value",
-  label_fun   = scales::comma,    # use scales::percent for proportions
+  label_fun   = comma,    # use percent for proportions
   palette     = "plasma",
   ncol        = 4,
   limits      = NULL,             # if NULL -> auto from data; else c(min, max)
@@ -317,8 +274,8 @@ facet_sa2_maps <- function(
     limits <- c(max(0, min_val, na.rm = TRUE), max_val)
   }
 
-  # 3) Build plot
-  facet_formula <- stats::as.formula(paste("~", facet_col))
+  # Build plot
+  facet_formula <- as.formula(paste("~", facet_col))
 
   p <- ggplot(long_sf) +
     geom_sf(aes(fill = .data[[value_col]]),
@@ -343,7 +300,7 @@ facet_sa2_maps <- function(
       legend.position = "right"
     )
 
-  # 4) Overlays & cropping depend on mode
+  # Overlays & cropping depend on mode
   if (!is.null(lga_sf)) {
     p <- p + geom_sf(data = lga_sf, inherit.aes = FALSE,
                      fill = NA, color = lga_color, linewidth = lga_size, show.legend = FALSE)
@@ -371,145 +328,63 @@ pop_size <- c("pop_size")
 
 # ---- Age ----
 age_count <- c(
-  "age_0_9","age_10_19","age_20_29","age_30_39",
-  "age_40_49","age_50_59","age_60_plus"
+  "age_0_19","age_20_39","age_40_59","age_60_plus"
 )
 
 age_prop <- c(
-  "prop_age_0_9","prop_age_10_19","prop_age_20_29","prop_age_30_39",
-  "prop_age_40_49","prop_age_50_59","prop_age_60_plus"
+  "prop_age_0_19","prop_age_20_39","prop_age_40_59","prop_age_60_plus"
 )
-
-# ---- Sex ----
-sex_count <- c("male","female")
-sex_prop  <- c("prop_male","prop_female")
 
 # ---- Country of Birth ----
 cob_count <- c("australia","overseas")
 cob_prop  <- c("prop_australia","prop_overseas")
 
-# ---- Language speaking at Home ----
+# ---- Language used at Home ----
 lang_count <- c("english","non_english")
 lang_prop  <- c("prop_english","prop_non_english")
 
-# ---- Family Composition ----
-family_count <- c(
-  "couple_no_children","couple_with_children","one_parent","other_family"
-)
-
-family_prop <- c(
-  "prop_couple_no_children","prop_couple_with_children",
-  "prop_one_parent","prop_other_family"
-)
 
 # ---- Education Level ----
-edu_count <- c("bachelor_above","adv_diploma","high_school_below")
-edu_prop  <- c("prop_bachelor_above","prop_adv_diploma","prop_high_school_below")
+edu_count <- c("bachelor_above","bachelor_below")
+edu_prop  <- c("prop_bachelor_above","prop_bachelor_below")
 
 # ---- Occupation ----
 occupation_count <- c("managers_professionals","everyone_else")
 occupation_prop  <- c("prop_managers_professionals","prop_everyone_else")
 
-# ---- Household Type ----
-household_count <- c("one_family","multi_family","non_family")
-household_prop  <- c("prop_one_family","prop_multi_family","prop_non_family")
 
 # ---- Income ----
-income_count <- c(
-  "neg_nil_income","very_low_income","low_income",
-  "middle_income","high_income","very_high_income"
-)
+income_count <- c("less_md_income", "more_md_income")
 
-income_prop <- c(
-  "prop_neg_nil_income","prop_very_low_income","prop_low_income",
-  "prop_middle_income","prop_high_income","prop_very_high_income"
-)
+income_prop <- c("prop_less_md_income", "prop_more_md_income")
 
-# ---- Labour Force ----
-labour_count <- c("employed","unemployed","not_in_labour_force")
-labour_prop  <- c("prop_employed","prop_unemployed","prop_not_in_labour_force")
 
 # ---- Housing Type ----
 housing_type_count <- c("social_housing", "non_social_housing")
 housing_type_prop <- c("prop_social_housing", "prop_non_social_housing")
     
-# ---- Housing Suitability ----
-housing_suit_count <- c("overcrowded", "high_crowded", "not_overcrowded")
-housing_suit_prop <- c("prop_overcrowded", "prop_high_crowded", "prop_not_overcrowded")
-
-# ---- Chronic Conditions ----
-chronic_count <- c("none_con","one_con","two_plus_cons")
-chronic_prop  <- c("prop_none_con","prop_one_con","prop_two_plus_cons")
 
 # ---- Health Conditions ----
-# (1) Disease count - yes/no
-disease_yes <- c(
-  "yes_arthritis","yes_asthma","yes_cancer","yes_dementia","yes_diabetes",
-  "yes_heart_disease","yes_kidney_disease","yes_lung_condition",
-  "yes_mental_health","yes_stroke"
-)
 
-disease_no <- c(
-  "no_arthritis","no_asthma","no_cancer","no_dementia","no_diabetes",
-  "no_heart_disease","no_kidney_disease","no_lung_condition",
-  "no_mental_health","no_stroke"
-)
-
-# (2) Disease overall proportions
 disease_prop <- c(
   "prop_arthritis","prop_asthma","prop_cancer","prop_dementia","prop_diabetes",
   "prop_heart_disease","prop_kidney_disease","prop_lung_condition",
   "prop_mental_health","prop_stroke"
 )
 
-# (3) Disease yes/no proportions
-disease_yes_prop <- c(
-  "prop_yes_arthritis","prop_yes_asthma","prop_yes_cancer","prop_yes_dementia",
-  "prop_yes_diabetes","prop_yes_heart_disease","prop_yes_kidney_disease",
-  "prop_yes_lung_condition","prop_yes_mental_health","prop_yes_stroke"
-)
-
-disease_no_prop <- c(
-  "prop_no_arthritis","prop_no_asthma","prop_no_cancer","prop_no_dementia",
-  "prop_no_diabetes","prop_no_heart_disease","prop_no_kidney_disease",
-  "prop_no_lung_condition","prop_no_mental_health","prop_no_stroke"
-)
-
 ```
 
-Note:
-
-- Grey area represents non-residential.
-
-- White line represents SA2 boundaries.
-
-- Black line represents LGA boundaries.
-
-- Green line represents LHD boundaries.
-
-### Population Size 
-
-- The largest populations of WSLHD are concentrated in SA2s around Blacktown, Parramatta, and parts of Cumberland, showing these areas as major population hubs within WSLHD.
-
-- the top 3 SA2s with the highest population counts: 
-  - Lalor Park – Kings Langley (25,373), 
-  - Schofields East (25,130)
-  - Baulkham Hills – East (24,726)
-
-- Northern parts of The Hills Shire and eastern sections of Blacktown have high population densities, while the central and southern SA2s display moderate population sizes.
-
-- Compared to the broader NSW metropolitan region, WSLHD has multiple SA2s with population sizes exceeding 20,000.
 
 ```{r, echo=FALSE}
 p_pop_wslhd <- facet_sa2_maps(
   map_sf      = map_wslhd_2021,
   vars        = pop_size,
-  title       = "Population Size by SA2 (WSLHD, 2021)",
+  title       = NULL,
   mode        = "wslhd",
   lga_sf      = lga_wslhd_2021,
   tag         = "wslhd",
   legend_name = "Count",
-  label_fun   = scales::comma
+  label_fun   = comma
 )
 
 p_pop_wslhd
@@ -517,67 +392,55 @@ p_pop_wslhd
 p_pop_metro <- facet_sa2_maps(
   map_sf      = map_metro_2021,
   vars        = pop_size,
-  title       = "Population Size by SA2 (NSW Metropolitan LHDs, 2021)",
+  title       = NULL,
   mode        = "metro",
   lga_sf      = lga_metro_clip_2021,
   lhd_sf      = lhd_metro_clip_2021,
   bbox        = bbox, 
   tag         = "metro",
   legend_name = "Count",
-  label_fun   = scales::comma,
+  label_fun   = comma,
   ncol        = 4,
 )
 
 p_pop_metro
+
+# ggsave("p_pop_metro.png", p_pop_metro,
+#       width = 6, height = 4, units = "in", dpi = 600, bg = "white")
+# 
+# p_pop <- (p_pop_metro | p_pop_wslhd)
+# 
+# ggsave("p_pop.png", p_pop,
+#       width = 9, height = 6, units = "in", dpi = 600, bg = "white")
 ```
-
-```{r, echo=FALSE}
-pop_wslhd_2021 <- cencus_nsw_2021 %>%
-  filter(in_wslhd == 1) %>%
-  select(sa2_name_2021, pop_size) %>%
-  arrange(desc(pop_size)) %>%
-  slice_head(n = 10)
-
-knitr::kable(pop_wslhd_2021)%>%
-  kable_styling(latex_options = "scale_down")
-```
-
-### Age Group
-
-- The age structure of WSLHD is characterised by three prominent groups: children aged 0–9, working-age adults aged 30–39, and older adults aged 60 and above.
-
-- Younger groups are mainly concentrated in the northern parts of Blacktown and the eastern areas of Parramatta. Wentworth Point – Sydney Olympic Park stands out with the highest concentration of young working professionals, where over 30% of the population falls into 30-39 age group.
-
-- WSLHD shows a relatively higher level of ageing compared with other NSW metropolitan LHDs. 
-
-- Across most SA2s in The Hills Shire, the proportion of residents aged 60 and above exceeds 20%. 
-
-- Glenhaven stands out with a particularly high level of ageing, where more than 30% of the population is aged 60 and above.
 
 ```{r, echo=FALSE}
 p_age_count_wslhd <- facet_sa2_maps(
   map_sf      = map_wslhd_2021,
   vars        = age_count,
-  title       = "Age Group Counts by SA2 (WSLHD, 2021)",
+  title       = NULL,
   mode        = "wslhd",
   lga_sf      = lga_wslhd_2021,
   tag         = "wslhd",
   legend_name = "Count",
-  label_fun   = scales::comma,
+  label_fun   = comma,
   ncol        = 4
 )
 
 p_age_count_wslhd
 
+# ggsave("p_age_count_wslhd.png", p_age_count_wslhd,
+#      width = 6, height = 4, units = "in", dpi = 600, bg = "white")
+
 p_age_prop_wslhd <- facet_sa2_maps(
   map_sf      = map_wslhd_2021,
   vars        = age_prop,
-  title       = "Age Group Proportions by SA2 (WSLHD, 2021)",
+  title       = "Age Group - Proportions by SA2 (WSLHD, 2021)",
   mode        = "wslhd", 
   lga_sf      = lga_wslhd_2021,
   tag         = "wslhd",
   legend_name = "Proportion",
-  label_fun   = scales::percent,
+  label_fun   = percent,
   ncol        = 4
 )
 p_age_prop_wslhd
@@ -585,14 +448,14 @@ p_age_prop_wslhd
 p_age_count_metro <- facet_sa2_maps(
   map_sf      = map_metro_2021,
   vars        = age_count,
-  title       = "Age Group Proportions by SA2 (NSW Metropolitan LHDs, 2021)",
+  title       = "Age Group - Counts by SA2 (Sydney Metropolitan LHDs, 2021)",
   mode        = "metro",
   lga_sf      = lga_metro_clip_2021,
   lhd_sf      = lhd_metro_clip_2021,
   bbox        = bbox, 
   tag         = "metro",
   legend_name = "Count",
-  label_fun   = scales::comma,
+  label_fun   = comma,
   ncol        = 4,
 )
 
@@ -601,14 +464,14 @@ p_age_count_metro
 p_age_prop_metro <- facet_sa2_maps(
   map_sf      = map_metro_2021,
   vars        = age_prop,
-  title       = "Age Group Proportions by SA2 (NSW Metropolitan LHDs, 2021)",
+  title       = "Age Group - Proportions by SA2 (Sydney Metropolitan LHDs, 2021)",
   mode        = "metro", 
   lga_sf      = lga_metro_clip_2021,
   lhd_sf      = lhd_metro_clip_2021,
   bbox        = bbox,
   tag         = "metro",
   legend_name = "Proportion",
-  label_fun   = scales::percent,
+  label_fun   = percent,
   ncol        = 4
 )
 
@@ -616,117 +479,15 @@ p_age_prop_metro
 ```
 
 ```{r, echo=FALSE}
-
-top_sa2_age60_wslhd <- cencus_nsw_2021_clean%>%
-  filter(in_wslhd == 1) %>%
-  arrange(desc(prop_age_60_plus)) %>%
-  slice_head(n = 10)
-
-ggplot(top_sa2_age60_wslhd, aes(x = reorder(sa2_name_2021, prop_age_60_plus), y = prop_age_60_plus)) +
-  geom_col(fill = "lightblue") + 
-  geom_text(aes(label = scales::comma(prop_age_60_plus)), 
-            hjust = -0.1, size = 3) +
-  coord_flip() +
-  labs(
-    title = "Top 10 SA2s with Highest Proportion Aged 60+ (WSLHD, 2021)",
-    x = "SA2",
-    y = "Proportion"
-  ) +
-  theme_minimal(base_size = 10) +
-  theme(
-    plot.title = element_text(hjust = 0.5, size = 10),
-    axis.text.y = element_text(size = 10),
-    axis.text.x = element_text(size = 10)
-  )
-
-```
-
-### Sex
-
-  - WSLHD and NSW Metropolitan both show balanced sex distribution.
-
-```{r, echo=FALSE}
-p_sex_count_wslhd <- facet_sa2_maps(
-  map_sf      = map_wslhd_2021,
-  vars        = sex_count,
-  title       = "Sex Counts by SA2 (WSLHD, 2021)",
-  mode        = "wslhd",
-  lga_sf      = lga_wslhd_2021,
-  tag         = "wslhd",
-  legend_name = "Count",
-  label_fun   = scales::comma,
-  ncol        = 2
-)
-
-p_sex_count_wslhd
-
-p_sex_prop_wslhd <- facet_sa2_maps(
-  map_sf      = map_wslhd_2021,
-  vars        = sex_prop,
-  title       = "Sex Proportions by SA2 (WSLHD, 2021)",
-  mode        = "wslhd", 
-  lga_sf      = lga_wslhd_2021,
-  tag         = "wslhd",
-  legend_name = "Proportion",
-  label_fun   = scales::percent,
-  ncol        = 2
-)
-
-p_sex_prop_wslhd
-
-p_sex_count_metro <- facet_sa2_maps(
-  map_sf      = map_metro_2021,
-  vars        = sex_count,
-  title       = "Sex Counts by SA2 (NSW Metropolitan LHDs, 2021)",
-  mode        = "metro",
-  lga_sf      = lga_metro_clip_2021,
-  lhd_sf      = lhd_metro_clip_2021,
-  bbox        = bbox,
-  tag         = "metro",
-  legend_name = "Count",
-  label_fun   = scales::comma,
-  ncol        = 2
-)
-
-p_sex_count_metro
-
-p_sex_prop_metro <- facet_sa2_maps(
-  map_sf      = map_metro_2021,
-  vars        = sex_prop,
-  title       = "Sex Proportions by SA2 (NSW Metropolitan LHDs, 2021)",
-  mode        = "metro", 
-  lga_sf      = lga_metro_clip_2021,
-  lhd_sf      = lhd_metro_clip_2021,
-  bbox        = bbox,
-  tag         = "metro",
-  legend_name = "Proportion",
-  label_fun   = scales::percent,
-  ncol        = 2
-)
-
-p_sex_prop_metro
-```
-
-### Culture Diversity
-
-- WSLHD overall shows significant diversity, with most SA2s having overseas-born and non-English speaking at home in the range of 40% to 60%. 
-
-- The northern part of The Hills Shire is dominated by Australian-born and English speaking residents.
-
-- Parramatta** and Cumberland SA2s have very high proportions of overseas-born residents and non-English speaking households.  
-
-- Compared with Northern Sydney and South Eastern Sydney, WSLHD overall has a much higher share of overseas-born residents, particularly in the southern and central SA2s.
-
-```{r, echo=FALSE}
 p_cob_count_wslhd <- facet_sa2_maps(
   map_sf      = map_wslhd_2021,
   vars        = cob_count,
-  title       = "Country of Birth Counts by SA2 (WSLHD, 2021)",
+  title       = "Country of Birth - Counts by SA2 (WSLHD, 2021)",,
   mode        = "wslhd",
   lga_sf      = lga_wslhd_2021,
   tag         = "wslhd",
   legend_name = "Count",
-  label_fun   = scales::comma,
+  label_fun   = comma,
   ncol        = 2
 )
 
@@ -735,12 +496,12 @@ p_cob_count_wslhd
 p_cob_prop_wslhd <- facet_sa2_maps(
   map_sf      = map_wslhd_2021,
   vars        = cob_prop,
-  title       = "Country of Birth Proportions by SA2 (WSLHD, 2021)",
+  title       = NULL,
   mode        = "wslhd", 
   lga_sf      = lga_wslhd_2021,
   tag         = "wslhd",
   legend_name = "Proportion",
-  label_fun   = scales::percent,
+  label_fun   = percent,
   ncol        = 2
 )
 
@@ -749,14 +510,14 @@ p_cob_prop_wslhd
 p_cob_count_metro <- facet_sa2_maps(
   map_sf      = map_metro_2021,
   vars        = cob_count,
-  title       = "Country of Birth Counts by SA2 (NSW Metropolitan LHDs, 2021)",
+  title       = "Country of Birth - Counts by SA2 (Sydney Metropolitan LHDs, 2021)",
   mode        = "metro",
   lga_sf      = lga_metro_clip_2021,
   lhd_sf      = lhd_metro_clip_2021,
   bbox        = bbox,
   tag         = "metro",
   legend_name = "Count",
-  label_fun   = scales::comma,
+  label_fun   = comma,
   ncol        = 2
 )
 
@@ -765,14 +526,14 @@ p_cob_count_metro
 p_cob_prop_metro <- facet_sa2_maps(
   map_sf      = map_metro_2021,
   vars        = cob_prop,
-  title       = "Country of Birth Proportions by SA2 (NSW Metropolitan LHDs, 2021)",
+  title       = "Country of Birth - Proportions by SA2 (Sydney Metropolitan LHDs, 2021)",
   mode        = "metro", 
   lga_sf      = lga_metro_clip_2021,
   lhd_sf      = lhd_metro_clip_2021,
   bbox        = bbox,
   tag         = "metro",
   legend_name = "Proportion",
-  label_fun   = scales::percent,
+  label_fun   = percent,
   ncol        = 2
 )
 
@@ -783,12 +544,12 @@ p_cob_prop_metro
 p_lang_count_wslhd <- facet_sa2_maps(
   map_sf      = map_wslhd_2021,
   vars        = lang_count,
-  title       = "Language speaking at Home — Counts by SA2 (WSLHD, 2021)",
+  title       = "Language Used at Home — Counts by SA2 (WSLHD, 2021)",
   mode        = "wslhd",
   lga_sf      = lga_wslhd_2021,
   tag         = "wslhd",
   legend_name = "Count",
-  label_fun   = scales::comma,
+  label_fun   = comma,
   ncol        = 2
 )
 p_lang_count_wslhd
@@ -796,12 +557,12 @@ p_lang_count_wslhd
 p_lang_prop_wslhd <- facet_sa2_maps(
   map_sf      = map_wslhd_2021,
   vars        = lang_prop,
-  title       = "Language Speaking at Home — Proportions by SA2 (WSLHD, 2021)",
+  title       = NULL,
   mode        = "wslhd",
   lga_sf      = lga_wslhd_2021,
   tag         = "wslhd",
   legend_name = "Proportion",
-  label_fun   = scales::percent,
+  label_fun   = percent,
   ncol        = 2
 )
 p_lang_prop_wslhd
@@ -809,14 +570,14 @@ p_lang_prop_wslhd
 p_lang_count_metro <- facet_sa2_maps(
   map_sf      = map_metro_2021,
   vars        = lang_count,
-  title       = "Language Speaking at Home — Counts by SA2 (NSW Metropolitan LHDs, 2021)",
+  title       = "Language Used at Home - Counts by SA2 (Sydney Metropolitan LHDs, 2021)",
   mode        = "metro",
   lga_sf      = lga_metro_clip_2021,
   lhd_sf      = lhd_metro_clip_2021,
   bbox        = bbox,
   tag         = "metro",
   legend_name = "Count",
-  label_fun   = scales::comma,
+  label_fun   = comma,
   ncol        = 2
 )
 p_lang_count_metro
@@ -824,156 +585,26 @@ p_lang_count_metro
 p_lang_prop_metro <- facet_sa2_maps(
   map_sf      = map_metro_2021,
   vars        = lang_prop,
-  title       = "Language Speaking at Home — Proportions by SA2 (NSW Metropolitan LHDs, 2021)",
+  title       = "Language Used at Home - Proportions by SA2 (Sydney Metropolitan LHDs, 2021)",
   mode        = "metro",
   lga_sf      = lga_metro_clip_2021,
   lhd_sf      = lhd_metro_clip_2021,
   bbox        = bbox,
   tag         = "metro",
   legend_name = "Proportion",
-  label_fun   = scales::percent,
+  label_fun   = percent,
   ncol        = 2
 )
 p_lang_prop_metro
 ```
 
-### Family Composition
+```{r}
+p_cd_wslhd <- (p_cob_prop_wslhd | p_lang_prop_wslhd)
 
-- Couples with children make up the largest share of households in WSLHD.  
-
--  Young families are concentrated in the northern parts of Blacktown and along the boundary between the southern areas of The Hills Shire and neighbouring SA2s.
-
-- Couples without children are more common in The Hills Shire and Parramatta, with particularly high proportions observed in Wentworth Point – Sydney Olympic Park.  
-
-- One-parent families are concentrated in some parts of south-western Blacktown.
-
-- Compared with other NSW Metropolitan LHDs, WSLHD has:  
-
-  - A higher number of families with children than in NSLHD and SESLHD.  
-  
-  - A higher number of couples without children in northern WSLHD compared with northern NSLHD. 
-  
-  - The proportion of couples without children in southern WSLHD is similar to other LHDs, generally ranging from 10% to 15%.  
-```{r, echo=FALSE}
-p_family_count_wslhd <- facet_sa2_maps(
-  map_sf      = map_wslhd_2021,
-  vars        = family_count,
-  title       = "Family Composition — Counts by SA2 (WSLHD, 2021)",
-  mode        = "wslhd",
-  lga_sf      = lga_wslhd_2021,
-  tag         = "wslhd",
-  legend_name = "Count",
-  label_fun   = scales::comma,
-  ncol        = 4
-)
-p_family_count_wslhd
-
-p_family_prop_wslhd <- facet_sa2_maps(
-  map_sf      = map_wslhd_2021,
-  vars        = family_prop,
-  title       = "Family Composition — Proportions by SA2 (WSLHD, 2021)",
-  mode        = "wslhd",
-  lga_sf      = lga_wslhd_2021,
-  tag         = "wslhd",
-  legend_name = "Proportion",
-  label_fun   = scales::percent,
-  ncol        = 4
-)
-p_family_prop_wslhd
-
-p_family_count_metro <- facet_sa2_maps(
-  map_sf      = map_metro_2021,
-  vars        = family_count,
-  title       = "Family Composition — Counts by SA2 (NSW Metropolitan LHDs, 2021)",
-  mode        = "metro",
-  lga_sf      = lga_metro_clip_2021,
-  lhd_sf      = lhd_metro_clip_2021,
-  bbox        = bbox,
-  tag         = "metro",
-  legend_name = "Count",
-  label_fun   = scales::comma,
-  ncol        = 4
-)
-p_family_count_metro
-
-p_family_prop_metro <- facet_sa2_maps(
-  map_sf      = map_metro_2021,
-  vars        = family_prop,
-  title       = "Family Composition — Proportions by SA2 (NSW Metropolitan LHDs, 2021)",
-  mode        = "metro",
-  lga_sf      = lga_metro_clip_2021,
-  lhd_sf      = lhd_metro_clip_2021,
-  bbox        = bbox,
-  tag         = "metro",
-  legend_name = "Proportion",
-  label_fun   = scales::percent,
-  ncol        = 4
-)
-p_family_prop_metro
+# ggsave("p_cd_wslhd.png", p_cd_wslhd,
+#      width = 9, height = 6, units = "in", dpi = 600, bg = "white")
 ```
 
-```{r, echo=FALSE}
-# Define young family 
-map_wslhd_2021 <- map_wslhd_2021 %>%
-  mutate(
-    young_family_est = (couple_with_children + one_parent) *
-                       (age_20_39 / pop_size) *
-                       (age_0_9 / pop_size),
-    young_family_prop = young_family_est / pop_size
-  )
-
-young_family_est <- c("young_family_est")
-young_family_prop <- c("young_family_prop")
-
-
-p_young_family_est_wslhd <- facet_sa2_maps(
-  map_sf      = map_wslhd_2021,
-  vars        = young_family_est,
-  title       = "Young Family — Estimated Counts by SA2 (WSLHD, 2021)",
-  mode        = "wslhd",
-  lga_sf      = lga_wslhd_2021,
-  tag         = "wslhd",
-  legend_name = "Count",
-  label_fun   = scales::comma,
-  ncol        = 4
-)
-
-p_young_family_est_wslhd
-
-p_young_family_prop_wslhd <- facet_sa2_maps(
-  map_sf      = map_wslhd_2021,
-  vars        = young_family_prop,
-  title       = "Young Family — Estimated Proportions by SA2 (WSLHD, 2021)",
-  mode        = "wslhd",
-  lga_sf      = lga_wslhd_2021,
-  tag         = "wslhd",
-  legend_name = "Proportion",
-  label_fun   = scales::percent,
-  ncol        = 4
-)
-
-p_young_family_prop_wslhd
-```
-
-
-Top 10 SA2s with Highest Proportion for Young Family (WSLHD, 2021)
-```{r, echo=FALSE}
-young_family_wslhd_2021 <- map_wslhd_2021 %>%
-  select(sa2_name_2021, young_family_prop, young_family_est) %>%
-  arrange(desc(young_family_prop)) %>%
-  slice_head(n = 10)
-
-knitr::kable(young_family_wslhd_2021)%>%
-  kable_styling(latex_options = "scale_down")
-```
-
-### Education Level
-
-- Overall, WSLHD has relatively lower education levels compared with NSLHD, SESLHD.  
-
-- In around 80% of SA2s within WSLHD, the proportion of residents whose highest education is below high school exceeds 40%.  
-
--Bachelor’s degree or higher qualifications are concentrated mainly in the Parramatta area, where the proportion typically reaches around 40% or above.
 
 ```{r, echo=FALSE}
 p_edu_count_wslhd <- facet_sa2_maps(
@@ -984,7 +615,7 @@ p_edu_count_wslhd <- facet_sa2_maps(
   lga_sf      = lga_wslhd_2021,
   tag         = "wslhd",
   legend_name = "Count",
-  label_fun   = scales::comma,
+  label_fun   = comma,
   ncol        = 3
 )
 p_edu_count_wslhd
@@ -993,12 +624,12 @@ p_edu_count_wslhd
 p_edu_prop_wslhd <- facet_sa2_maps(
   map_sf      = map_wslhd_2021,
   vars        = edu_prop,
-  title       = "Education Level — Proportions by SA2 (WSLHD, 2021)",
+  title       = "Education",
   mode        = "wslhd",
   lga_sf      = lga_wslhd_2021,
   tag         = "wslhd",
   legend_name = "Proportion",
-  label_fun   = scales::percent,
+  label_fun   = percent,
   ncol        = 3
 )
 p_edu_prop_wslhd
@@ -1006,14 +637,14 @@ p_edu_prop_wslhd
 p_edu_count_metro <- facet_sa2_maps(
   map_sf      = map_metro_2021,
   vars        = edu_count,
-  title       = "Education Level — Counts by SA2 (NSW Metropolitan LHDs, 2021)",
+  title       = "Education Level — Counts by SA2 (Sydney Metropolitan LHDs, 2021)",
   mode        = "metro",
   lga_sf      = lga_metro_clip_2021,
   lhd_sf      = lhd_metro_clip_2021,
   bbox        = bbox,
   tag         = "metro",
   legend_name = "Count",
-  label_fun   = scales::comma,
+  label_fun   = comma,
   ncol        = 3
 )
 p_edu_count_metro
@@ -1021,26 +652,18 @@ p_edu_count_metro
 p_edu_prop_metro <- facet_sa2_maps(
   map_sf      = map_metro_2021,
   vars        = edu_prop,
-  title       = "Education Level — Proportions by SA2 (NSW Metropolitan LHDs, 2021)",
+  title       = "Education Level — Proportions by SA2 (Sydney Metropolitan LHDs, 2021)",
   mode        = "metro",
   lga_sf      = lga_metro_clip_2021,
   lhd_sf      = lhd_metro_clip_2021,
   bbox        = bbox,
   tag         = "metro",
   legend_name = "Proportion",
-  label_fun   = scales::percent,
+  label_fun   = percent,
   ncol        = 3
 )
 p_edu_prop_metro
 ```
-
-### Occupation
-
-- The number and proportion of residents working as managers or professionals in WSLHD are generally lower compared with NSLHD and SESLHD. 
-
-- Within WSLHD, most SA2s have less than 40% of their workforce employed in managerial or professional roles.  
-
-- SA2s where the proportion exceeds 40% are mainly concentrated in the northern parts of Blacktown, the southern areas of The Hills Shire, and around Parramatta.
 
 ```{r, echo=FALSE}
 p_occ_count_wslhd <- facet_sa2_maps(
@@ -1051,7 +674,7 @@ p_occ_count_wslhd <- facet_sa2_maps(
   lga_sf      = lga_wslhd_2021,
   tag         = "wslhd",
   legend_name = "Count",
-  label_fun   = scales::comma,
+  label_fun   = comma,
   ncol        = 2
 )
 p_occ_count_wslhd
@@ -1059,12 +682,12 @@ p_occ_count_wslhd
 p_occ_prop_wslhd <- facet_sa2_maps(
   map_sf      = map_wslhd_2021,
   vars        = occupation_prop,
-  title       = "Occupation — Proportions by SA2 (WSLHD, 2021)",
+  title       = NULL,
   mode        = "wslhd",
   lga_sf      = lga_wslhd_2021,
   tag         = "wslhd",
   legend_name = "Propotion",
-  label_fun   = scales::percent,
+  label_fun   = percent,
   ncol        = 2
 )
 p_occ_prop_wslhd
@@ -1072,14 +695,14 @@ p_occ_prop_wslhd
 p_occ_count_metro <- facet_sa2_maps(
   map_sf      = map_metro_2021,
   vars        = occupation_count,
-  title       = "Occupation — Counts by SA2 (NSW Metropolitan LHDs, 2021)",
+  title       = "Occupation — Counts by SA2 (Sydney Metropolitan LHDs, 2021)",
   mode        = "metro",
   lga_sf      = lga_metro_clip_2021,
   lhd_sf      = lhd_metro_clip_2021,
   bbox        = bbox,
   tag         = "metro",
   legend_name = "Count",
-  label_fun   = scales::comma,
+  label_fun   = comma,
   ncol        = 2
 )
 p_occ_count_metro
@@ -1087,105 +710,25 @@ p_occ_count_metro
 p_occ_prop_metro <- facet_sa2_maps(
   map_sf      = map_metro_2021,
   vars        = occupation_prop,
-  title       = "Occupation — Proportions by SA2 (NSW Metropolitan LHDs, 2021)",
+  title       = "Occupation — Proportions by SA2 (Sydney Metropolitan LHDs, 2021)",
   mode        = "metro",
   lga_sf      = lga_metro_clip_2021,
   lhd_sf      = lhd_metro_clip_2021,
   bbox        = bbox,
   tag         = "metro",
   legend_name = "Proportion",
-  label_fun   = scales::percent,
+  label_fun   = percent,
   ncol        = 2
 )
 p_occ_prop_metro
 ```
 
-Top 10 SA2s with Highest Proportion for managers or professionals (WSLHD, 2021)
-```{r, echo=FALSE}
-mag_prof_wslhd_2021 <- cencus_nsw_2021 %>%
-  filter(in_wslhd == 1) %>%
-  select(sa2_name_2021, managers_professionals, prop_managers_professionals) %>%
-  arrange(desc(prop_managers_professionals)) %>%
-  slice_head(n = 10)
-  
-
-knitr::kable(mag_prof_wslhd_2021)%>%
-  kable_styling(latex_options = "scale_down")
+```{r}
+# p_sem_wslhd <- (p_edu_prop_wslhd | p_occ_prop_wslhd)
+# 
+# ggsave("p_sem_wslhd.png", p_sem_wslhd,
+#      width = 9, height = 6, units = "in", dpi = 600, bg = "white")
 ```
-
-### Household Type
-
-- WSLHD is predominantly characterised by one-family households across most SA2s.  
-
-- Non-family households are relatively uncommon overall and are mainly concentrated in a few areas around Parramatta, particularly in high-density apartment precincts such as Wentworth Point – Sydney Olympic Park.
-
-```{r, echo=FALSE}
-p_household_count_wslhd <- facet_sa2_maps(
-  map_sf      = map_wslhd_2021,
-  vars        = household_count,
-  title       = "Household Type — Counts by SA2 (WSLHD, 2021)",
-  mode        = "wslhd",
-  lga_sf      = lga_wslhd_2021,
-  tag         = "wslhd",
-  legend_name = "Count",
-  label_fun   = scales::comma,
-  ncol        = 3
-)
-p_household_count_wslhd
-
-p_household_prop_wslhd <- facet_sa2_maps(
-  map_sf      = map_wslhd_2021,
-  vars        = household_prop,
-  title       = "Household Type — Proportions by SA2 (WSLHD, 2021)",
-  mode        = "wslhd",
-  lga_sf      = lga_wslhd_2021,
-  tag         = "wslhd",
-  legend_name = "Proportion",
-  label_fun   = scales::percent,
-  ncol        = 3
-)
-p_household_prop_wslhd
-
-p_household_count_metro <- facet_sa2_maps(
-  map_sf      = map_metro_2021,
-  vars        = household_count,
-  title       = "Household Type — Counts by SA2 (NSW Metropolitan LHDs, 2021)",
-  mode        = "metro",
-  lga_sf      = lga_metro_clip_2021,
-  lhd_sf      = lhd_metro_clip_2021,
-  bbox        = bbox,
-  tag         = "metro",
-  legend_name = "Count",
-  label_fun   = scales::comma,
-  ncol        = 3
-)
-p_household_count_metro
-
-p_household_prop_metro <- facet_sa2_maps(
-  map_sf      = map_metro_2021,
-  vars        = household_prop,
-  title       = "Household Type — Proportions by SA2 (NSW Metropolitan LHDs, 2021)",
-  mode        = "metro",
-  lga_sf      = lga_metro_clip_2021,
-  lhd_sf      = lhd_metro_clip_2021,
-  bbox        = bbox,
-  tag         = "metro",
-  legend_name = "Proportion",
-  label_fun   = scales::percent,
-  ncol        = 3
-)
-p_household_prop_metro
-```
-
-### Income
-
-- Household income in WSLHD is mainly distributed across three key groups: very low income (weekly `$1–$999`), middle income (`$1,500–$2,499`), and very high income (more than `$3,000`).  
-
-- Overall, households in the central and northern parts of WSLHD are generally more affluent compared with those in the south. 
-
-- The Hills Shire stands out, with almost all SA2s having more than 10% of households earning a very high income each week.  
-
-- Apart from the northern areas, which are relatively wealthier compared with other LHDs, the southern parts of WSLHD show household income levels broadly comparable to other NSW metropolitan LHDs.
 
 ```{r, echo=FALSE}
 p_income_count_wslhd <- facet_sa2_maps(
@@ -1196,8 +739,8 @@ p_income_count_wslhd <- facet_sa2_maps(
   lga_sf      = lga_wslhd_2021,
   tag         = "wslhd",
   legend_name = "Count",
-  label_fun   = scales::comma,
-  ncol        = 3
+  label_fun   = comma,
+  ncol        = 2
 )
 p_income_count_wslhd
 
@@ -1209,108 +752,41 @@ p_income_prop_wslhd <- facet_sa2_maps(
   lga_sf      = lga_wslhd_2021,
   tag         = "wslhd",
   legend_name = "Proportion",
-  label_fun   = scales::percent,
-  ncol        = 3
+  label_fun   = percent,
+  ncol        = 2
 )
 p_income_prop_wslhd
 
 p_income_count_metro <- facet_sa2_maps(
   map_sf      = map_metro_2021,
   vars        = income_count,
-  title       = "Personal Income — Counts by SA2 (NSW Metropolitan LHDs, 2021)",
+  title       = "Personal Income — Counts by SA2 (Sydney Metropolitan LHDs, 2021)",
   mode        = "metro",
   lga_sf      = lga_metro_clip_2021,
   lhd_sf      = lhd_metro_clip_2021,
   bbox        = bbox,
   tag         = "metro",
   legend_name = "Count",
-  label_fun   = scales::comma,
-  ncol        = 3
+  label_fun   = comma,
+  ncol        = 2
 )
 p_income_count_metro
 
 p_income_prop_metro <- facet_sa2_maps(
   map_sf      = map_metro_2021,
   vars        = income_prop,
-  title       = "Personal Income — Proportions by SA2 (NSW Metropolitan LHDs, 2021)",
+  title       = "Personal Income — Proportions by SA2 (Sydney Metropolitan LHDs, 2021)",
   mode        = "metro",
   lga_sf      = lga_metro_clip_2021,
   lhd_sf      = lhd_metro_clip_2021,
   bbox        = bbox,
   tag         = "metro",
   legend_name = "Proportion",
-  label_fun   = scales::percent,
-  ncol        = 3
+  label_fun   = percent,
+  ncol        = 2
 )
 p_income_prop_metro
 ```
-
-### Labour Force Status
-
-- Across WSLHD, the 60% of residents are employed, accounting for around 60% of the population.
-
-- Approximately 40% of residents are not in the labour force, with this group concentrated mainly in the southern parts of Blacktown and across several SA2s in Cumberland. 
-
-```{r, echo=FALSE}
-p_labour_count_wslhd <- facet_sa2_maps(
-  map_sf      = map_wslhd_2021,
-  vars        = labour_count,
-  title       = "Labour Force Status — Counts by SA2 (WSLHD, 2021)",
-  mode        = "wslhd",
-  lga_sf      = lga_wslhd_2021,
-  tag         = "wslhd",
-  legend_name = "Count",
-  label_fun   = scales::comma,
-  ncol        = 3
-)
-p_labour_count_wslhd
-
-p_labour_prop_wslhd <- facet_sa2_maps(
-  map_sf      = map_wslhd_2021,
-  vars        = labour_prop,
-  title       = "Labour Force Status — Proportions by SA2 (WSLHD, 2021)",
-  mode        = "wslhd",
-  lga_sf      = lga_wslhd_2021,
-  tag         = "wslhd",
-  legend_name = "Proportion",
-  label_fun   = scales::percent,
-  ncol        = 3
-)
-p_labour_prop_wslhd
-
-p_labour_count_metro <- facet_sa2_maps(
-  map_sf      = map_metro_2021,
-  vars        = labour_count,
-  title       = "Labour Force Status — Counts by SA2 (NSW Metropolitan LHDs, 2021)",
-  mode        = "metro",
-  lga_sf      = lga_metro_clip_2021,
-  lhd_sf      = lhd_metro_clip_2021,
-  bbox        = bbox,
-  tag         = "metro",
-  legend_name = "Count",
-  label_fun   = scales::comma,
-  ncol        = 3
-)
-p_labour_count_metro
-
-p_labour_prop_metro <- facet_sa2_maps(
-  map_sf      = map_metro_2021,
-  vars        = labour_prop,
-  title       = "Labour Force Status — Proportions by SA2 (NSW Metropolitan LHDs, 2021)",
-  mode        = "metro",
-  lga_sf      = lga_metro_clip_2021,
-  lhd_sf      = lhd_metro_clip_2021,
-  bbox        = bbox,
-  tag         = "metro",
-  legend_name = "Proportion",
-  label_fun   = scales::percent,
-  ncol        = 3
-)
-p_labour_prop_metro
-```
-
-### Housing Type
-
 
 ```{r, echo=FALSE}
 p_housing_type_count_wslhd <- facet_sa2_maps(
@@ -1321,7 +797,7 @@ p_housing_type_count_wslhd <- facet_sa2_maps(
   lga_sf      = lga_wslhd_2021,
   tag         = "wslhd",
   legend_name = "Count",
-  label_fun   = scales::comma,
+  label_fun   = comma,
   ncol        = 3
 )
 p_housing_type_count_wslhd
@@ -1334,7 +810,7 @@ p_housing_type_prop_wslhd <- facet_sa2_maps(
   lga_sf      = lga_wslhd_2021,
   tag         = "wslhd",
   legend_name = "Proportion",
-  label_fun   = scales::percent,
+  label_fun   = percent,
   ncol        = 3
 )
 p_housing_type_prop_wslhd
@@ -1342,14 +818,14 @@ p_housing_type_prop_wslhd
 p_housing_type_count_metro <- facet_sa2_maps(
   map_sf      = map_metro_2021,
   vars        = housing_type_count,
-  title       = "Housing Type — Counts by SA2 (NSW Metropolitan LHDs, 2021)",
+  title       = "Housing Type — Counts by SA2 (Sydney Metropolitan LHDs, 2021)",
   mode        = "metro",
   lga_sf      = lga_metro_clip_2021,
   lhd_sf      = lhd_metro_clip_2021,
   bbox        = bbox,
   tag         = "metro",
   legend_name = "Count",
-  label_fun   = scales::comma,
+  label_fun   = comma,
   ncol        = 3
 )
 p_housing_type_count_metro
@@ -1357,180 +833,29 @@ p_housing_type_count_metro
 p_housing_type_prop_metro <- facet_sa2_maps(
   map_sf      = map_metro_2021,
   vars        = housing_type_prop,
-  title       = "Housing Type — Proportions by SA2 (NSW Metropolitan LHDs, 2021)",
+  title       = "Housing Type — Proportions by SA2 (Sydney Metropolitan LHDs, 2021)",
   mode        = "metro",
   lga_sf      = lga_metro_clip_2021,
   lhd_sf      = lhd_metro_clip_2021,
   bbox        = bbox,
   tag         = "metro",
   legend_name = "Proportion",
-  label_fun   = scales::percent,
+  label_fun   = percent,
   ncol        = 3
 )
 p_housing_type_prop_metro
-```
-
-
-### Housing Suitability
-
-
-```{r, echo=FALSE}
-p_housing_suit_count_wslhd <- facet_sa2_maps(
-  map_sf      = map_wslhd_2021,
-  vars        = housing_suit_count,
-  title       = "Housing Suitability — Counts by SA2 (WSLHD, 2021)",
-  mode        = "wslhd",
-  lga_sf      = lga_wslhd_2021,
-  tag         = "wslhd",
-  legend_name = "Count",
-  label_fun   = scales::comma,
-  ncol        = 3
-)
-p_housing_suit_count_wslhd
-
-p_housing_suit_prop_wslhd <- facet_sa2_maps(
-  map_sf      = map_wslhd_2021,
-  vars        = housing_type_prop,
-  title       = "Housing Suitability — Proportions by SA2 (WSLHD, 2021)",
-  mode        = "wslhd",
-  lga_sf      = lga_wslhd_2021,
-  tag         = "wslhd",
-  legend_name = "Proportion",
-  label_fun   = scales::percent,
-  ncol        = 3
-)
-p_housing_suit_prop_wslhd
-
-p_housing_suit_count_metro<- facet_sa2_maps(
-  map_sf      = map_metro_2021,
-  vars        = housing_suit_count,
-  title       = "Housing Type — Counts by SA2 (NSW Metropolitan LHDs, 2021)",
-  mode        = "metro",
-  lga_sf      = lga_metro_clip_2021,
-  lhd_sf      = lhd_metro_clip_2021,
-  bbox        = bbox,
-  tag         = "metro",
-  legend_name = "Count",
-  label_fun   = scales::comma,
-  ncol        = 3
-)
-p_housing_suit_count_metro
-
-p_housing_suit_prop_metro <- facet_sa2_maps(
-  map_sf      = map_metro_2021,
-  vars        = housing_suit_prop,
-  title       = "Housing Suitability — Proportions by SA2 (NSW Metropolitan LHDs, 2021)",
-  mode        = "metro",
-  lga_sf      = lga_metro_clip_2021,
-  lhd_sf      = lhd_metro_clip_2021,
-  bbox        = bbox,
-  tag         = "metro",
-  legend_name = "Proportion",
-  label_fun   = scales::percent,
-  ncol        = 3
-)
-p_housing_suit_prop_metro
-```
-
-
-### Health Profile
-
-- Overall, WSLHD shows a relatively healthy population profile.
-
-- Across all SA2s, around 80% of residents report having no chronic health conditions.  
-
-- Approximately 20% of residents report having one chronic condition, while the proportion of residents with multiple conditions is relatively low.
-
-Among the ten selected health conditions, arthritis, asthma, diabetes, and mental health conditions are the four most prevalent in WSLHD and also the most common across the NSW metropolitan region.
-
-Overall, these four conditions represent the highest health burdens within WSLHD, with notable hotspots in southern Blacktown, parts of Cumberland, and specific SA2s in The Hills Shire and Parramatta.
-
-
-- **Arthritis**  
-  Proportion is mainly concentrated in the southern parts of Blacktown, the southern areas of The Hills Shire, central and northern Parramatta, and across much of Cumberland.  
-  In these areas, the proportion is around 6%, while Glenhaven in The Hills Shire stands out with a particularly high proportion exceeding 10%.
-
-- **Asthma**  
-  Nearly 80% of SA2s in WSLHD have asthma proportion above 6%.  
-  Southern Blacktown has rates approaching 9%, with Lethbridge Park – Tregear showing the highest proportion, exceeding 10%.
-
-- **Diabetes**  
-  Diabetes proportion is also concentrated in the southern parts of Blacktown, where the proportion typically exceeds 6%.
-
-- **Mental health conditions**  
-  Mental health conditions are more evenly distributed across WSLHD, with proportion ranging between 3% and 6%.  
-  
-  Higher proportions are observed in southern Blacktown and central Parramatta, where rates are around 6%.
-
-```{r, echo=FALSE}
-p_chronic_count_wslhd <- facet_sa2_maps(
-  map_sf      = map_wslhd_2021,
-  vars        = chronic_count,
-  title       = "Chronic Conditions — Counts by SA2 (WSLHD, 2021)",
-  mode        = "wslhd",
-  lga_sf      = lga_wslhd_2021,
-  tag         = "wslhd",
-  legend_name = "Count",
-  label_fun   = scales::comma,
-  ncol        = 3
-)
-p_chronic_count_wslhd
-
-p_chronic_prop_wslhd <- facet_sa2_maps(
-  map_sf      = map_wslhd_2021,
-  vars        = chronic_prop,
-  title       = "Chronic Conditions — Proportions by SA2 (WSLHD, 2021)",
-  mode        = "wslhd",
-  lga_sf      = lga_wslhd_2021,
-  tag         = "wslhd",
-  legend_name = "Proportion",
-  label_fun   = scales::percent,
-  ncol        = 3
-)
-p_chronic_prop_wslhd
-
-p_chronic_count_metro <- facet_sa2_maps(
-  map_sf      = map_metro_2021,
-  vars        = chronic_count,
-  title       = "Chronic Conditions — Counts by SA2 (NSW Metropolitan LHDs, 2021)",
-  mode        = "metro",
-  lga_sf      = lga_metro_clip_2021,
-  lhd_sf      = lhd_metro_clip_2021,
-  bbox        = bbox,
-  tag         = "metro",
-  legend_name = "Count",
-  label_fun   = scales::comma,
-  ncol        = 3
-)
-p_chronic_count_metro
-
-p_chronic_prop_metro <- facet_sa2_maps(
-  map_sf      = map_metro_2021,
-  vars        = chronic_prop,
-  title       = "Chronic Conditions — Proportions by SA2 (NSW Metropolitan LHDs, 2021)",
-  mode        = "metro",
-  lga_sf      = lga_metro_clip_2021,
-  lhd_sf      = lhd_metro_clip_2021,
-  bbox        = bbox,
-  tag         = "metro",
-  legend_name = "Proportion",
-  label_fun   = scales::percent,
-  ncol        = 3
-)
-p_chronic_prop_metro
-
 ```
 
 ```{r, echo=FALSE}
 p_disease_prop_wslhd <- facet_sa2_maps(
   map_sf      = map_wslhd_2021,
   vars        = disease_prop,
-  title       = "Disease Overall Proportions by SA2 (WSLHD, 2021)",
+  title       = NULL,
   mode        = "wslhd",
   lga_sf      = lga_wslhd_2021,
   tag         = "wslhd",
   legend_name = "Proportion",
-  label_fun   = scales::percent,
+  label_fun   = percent,
   ncol        = 5
 )
 p_disease_prop_wslhd
@@ -1538,15 +863,20 @@ p_disease_prop_wslhd
 p_disease_prop_metro <- facet_sa2_maps(
   map_sf      = map_metro_2021,
   vars        = disease_prop,
-  title       = "Disease Overall Proportions by SA2 (NSW Metropolitan LHDs, 2021)",
+  title       = "Disease Overall Proportions by SA2 (Sydney Metropolitan LHDs, 2021)",
   mode        = "metro",
   lga_sf      = lga_metro_clip_2021,
   lhd_sf      = lhd_metro_clip_2021,
   bbox        = bbox,
   tag         = "metro",
   legend_name = "Proportion",
-  label_fun   = scales::percent,
+  label_fun   = percent,
   ncol        = 5
 )
 p_disease_prop_metro
+```
+
+```{r}
+# ggsave("p_disease_prop_wslhd.png", p_disease_prop_wslhd,
+#      width = 9, height = 6, units = "in", dpi = 600, bg = "white")
 ```

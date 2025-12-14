@@ -1,0 +1,85 @@
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(readr)
+library(dplyr)
+library(tidyr)
+```
+
+
+```{r, include=FALSE}
+# Read datasets (variables from prepossessing folder)
+pop_nsw_2021 <- read.csv("pop_size_nsw_2021.csv")
+cons_ty_nsw_2021 <- read.csv("cons_ty_nsw_2021.csv")
+```
+
+```{r}
+# Read column names
+names(cons_ty_nsw_2021)
+```
+
+```{r}
+# Unify format
+cons_ty_nsw_2021 <- cons_ty_nsw_2021 %>%
+  rename(
+    arthritis = Arthritis,
+    asthma = Asthma,
+    cancer = `Cancer..including.remission.`,
+    dementia = `Dementia..including.Alzheimer.s.`,
+    diabetes = `Diabetes..excluding.gestational.diabetes.`,
+    heart_disease = `Heart.disease..including.heart.attack.or.angina.`,
+    kidney_disease = `Kidney.disease`,
+    lung_condition = `Lung.condition..including.COPD.or.emphysema.`,
+    mental_health = `Mental.health.condition..including.depression.or.anxiety.`,
+    stroke = Stroke
+  )
+```
+
+```{r}
+# Join variables into pop_nsw datasets
+pop_nsw_2021 <- pop_nsw_2021 %>%
+  rename(sa2 = "sa2_name_2021") %>%
+  left_join(cons_ty_nsw_2021, by = "sa2")
+```
+
+```{r}
+healcons_nsw_2021 <- pop_nsw_2021%>%
+  mutate(
+    # Calculate proportions (type of selected long term health conditions)
+    prop_arthritis = if_else(pop_size > 0, arthritis / pop_size, NA_real_),
+    prop_asthma = if_else(pop_size > 0, asthma / pop_size, NA_real_),
+    prop_cancer = if_else(pop_size > 0, cancer / pop_size, NA_real_),
+    prop_dementia = if_else(pop_size > 0, dementia / pop_size, NA_real_),
+    prop_diabetes = if_else(pop_size > 0, diabetes / pop_size, NA_real_),
+    prop_heart_disease = if_else(pop_size > 0, heart_disease / pop_size, NA_real_),
+    prop_kidney_disease = if_else(pop_size > 0, kidney_disease / pop_size, NA_real_),
+    prop_lung_condition = if_else(pop_size > 0, lung_condition / pop_size, NA_real_),
+    prop_mental_health = if_else(pop_size > 0, mental_health / pop_size, NA_real_),
+    prop_stroke = if_else(pop_size > 0, stroke / pop_size, NA_real_)
+  )
+```
+
+```{r}
+# Retain key variables
+healcons_nsw_2021 <- healcons_nsw_2021 %>%
+  select(
+    sa2, in_wslhd, in_metro, pop_size,
+    
+    # Type of conditions
+    arthritis, asthma, cancer, dementia, diabetes,
+    heart_disease, kidney_disease, lung_condition, mental_health, stroke,
+    
+    # Proportions (type of conditions)
+    prop_arthritis, prop_asthma, prop_cancer, prop_dementia, prop_diabetes,
+    prop_heart_disease, prop_kidney_disease, prop_lung_condition, prop_mental_health, prop_stroke,
+    
+  ) %>%
+  
+    rename(sa2_name_2021 = "sa2")
+
+# write_csv(healcons_nsw_2021, "healcons_nsw_2021.csv")
+```
+

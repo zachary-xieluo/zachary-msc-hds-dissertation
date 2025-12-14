@@ -8,17 +8,17 @@
 .DS_Store
 Thumbs.db
 
-# R Markdown knitted outputs
-*.html
-*.pdf
-*.docx
-
 # Cache folders (knitr / quarto)
 *_cache/
 */_cache/
 */cache/
 
-# Figures and large outputs
+# Quarto cache / artifacts (safe to ignore)
+.quarto/
+_site/
+*_files/
 
+# Figures and large outputs
 **/outputs/
 outputs_reports/
+/.quarto/
