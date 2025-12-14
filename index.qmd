@@ -1,14 +1,14 @@
 ---
-title: "People and Communities in Western Sydney"
 format:
   closeread-html:
-    remove-header-space: true
+    remove-header-space: true 
     css:
-      - assets/styles.css
+      - assets/styles.css 
+    include-after-body:
+      - assets/scripts.html
     toc: false
-
 cr-style:
-  narrative-background-color-overlay: "rgba(15,23,42,0.7)"
+  narrative-background-color-overlay: "rgba(15,23,42,0.7)" 
   narrative-text-color-overlay: "#f8fafc"
   narrative-background-color-sidebar: "#ffffff"
   narrative-text-color-sidebar: "#000000"
@@ -16,7 +16,9 @@ cr-style:
   narrative-overlay-max-width: "750px"
   narrative-overlay-min-width: "300px"
   narrative-sidebar-width: "700px"
-  narrative-font-size: "1.4rem"
+  narrative-font-size: 1.4rem
+  
+title-block-banner: false
 ---
 
 
