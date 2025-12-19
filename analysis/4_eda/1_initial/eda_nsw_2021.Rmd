@@ -1,0 +1,882 @@
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(dplyr)
+library(tidyr)
+library(strayr)
+library(sf)
+library(ggplot2)
+library(rlang)
+library(scales)
+library(patchwork)
+```
+
+
+```{r, include=FALSE}
+# ========Read datasets ========
+
+# Read variables
+cencus_nsw_2021 <- read.csv("cencus_nsw_2021.csv")
+
+# Read in the SA2-LGA-LHD mapping table
+geo_nsw_2021 <- read.csv("sa2_lga_lhd_nsw_2021.csv") 
+
+# Read SA2 map
+sa2_map_2021 <- read_absmap("sa22021") %>%
+  filter(state_name_2021 == "New South Wales") %>%
+  
+  # Remove offshore
+  filter(!grepl("Lord Howe Island", sa2_name_2021, ignore.case = TRUE))
+
+# Read LGA map
+lga_map_2021 <- read_absmap("lga2021") %>%
+  filter(state_name_2021 == "New South Wales") 
+
+# Read LHD map
+lhd_map_2023 <- read_absmap("nsw_lhd2023") 
+```
+
+```{r, include=FALSE}
+# ======== Check non-residential SA2s ========
+
+# Arrange SA2s by population size in ascending order (smallest first)
+check_pop_size <- cencus_nsw_2021 %>%
+  arrange(pop_size)
+
+# Display the first 30 SA2s (lowest populations)
+head(check_pop_size, 30)
+
+# Extract non-residential from check_pop_size
+non_res_sa2 <- check_pop_size %>%
+  arrange(pop_size) %>%
+  
+  # Take the first 20 SA2s, 
+  # Their population was below 100 and considered non-residential
+  slice_head(n = 20) %>%            
+  pull(sa2_name_2021) %>%           
+  as.list()
+
+# Get all numeric columns in the dataset
+num_cols <- names(select(cencus_nsw_2021, where(is.numeric)))
+
+# Exclude columns that should not be cleaned
+cols_to_clean <- setdiff(num_cols, c("in_wslhd", "in_metro")) 
+
+# For all numeric columns (except protected ones),
+# set values to NA for the non-residential SA2 areas
+cencus_nsw_2021_clean <- cencus_nsw_2021 %>%
+  mutate(across(all_of(cols_to_clean),
+                ~ ifelse(sa2_name_2021 %in% non_res_sa2, NA_real_, .)))
+```
+
+```{r, include=FALSE}
+# --- Prepare spatial datasets for wslhd ---
+
+# Define LGAs in WSLHD
+wslhd_lgas <- c("Blacktown","Parramatta","Cumberland","The Hills Shire")
+
+# Integrate wslhd SA2 geometries with wslhd census data
+map_wslhd_2021 <- sa2_map_2021 %>% 
+  left_join(cencus_nsw_2021_clean, by = "sa2_name_2021") %>%
+  filter(in_wslhd == 1)
+
+# Extract LGA boundaries for WSLHD
+lga_wslhd_2021 <- lga_map_2021 %>%
+  filter(lga_name_2021 %in% wslhd_lgas) %>%
+  st_transform(crs = st_crs(map_wslhd_2021))
+```
+
+```{r, include=FALSE}
+# ======== Prepare spatial datasets for metropolitan  ========
+
+# Keep six metropolitan LHDs
+metro_nsw_lhd <- c(
+  "Nepean Blue Mountains","Northern Sydney",
+  "South Eastern Sydney","South Western Sydney",
+  "Sydney","Western Sydney"
+)
+
+# Integrate metropolitan SA2 geometries with metropolitan census data
+map_metro_2021 <- sa2_map_2021 %>% 
+  left_join(cencus_nsw_2021_clean, by = "sa2_name_2021") %>%
+  filter(in_metro == 1)
+
+# --- SA2s inside metropolitan LHDs → geometry for mask and bbox ---
+# Select metropolitan SA2 from mapping list
+sa2_set_2021 <- geo_nsw_2021 %>%
+  filter(nsw_lhd_name %in% metro_nsw_lhd) %>%
+  pull(sa2_name_2021) %>%
+  unique()
+
+# Join metropolitan SA2 geometries
+sa2_metro_2021 <- sa2_map_2021 %>%
+  filter(sa2_name_2021 %in% sa2_set_2021)
+
+
+# --- LGAs inside metropolitan LHDs → geometry for overlay ---
+# Select metropolitan LGA from mapping list
+lga_set <- geo_nsw_2021 %>%
+  filter(nsw_lhd_name %in% metro_nsw_lhd) %>%
+  pull(lga_name_2021) %>%
+  unique()
+
+# Join metropolitan LGA geometries
+lga_metro_2021 <- lga_map_2021 %>%
+  filter(lga_name_2021 %in% lga_set)
+
+# --- LHD geometry for overlay ---
+# Join metropolitan LHD geometries
+lhd_metro_2021 <- lhd_map_2023 %>%
+  filter(nsw_lhd_name %in% metro_nsw_lhd)
+
+# ---Align CRS to SA2 layer to ensure overlays line up ---
+lga_metro_2021 <- st_transform(lga_metro_2021, st_crs(sa2_metro_2021))
+lhd_metro_2021 <- st_transform(lhd_metro_2021, st_crs(sa2_metro_2021))
+
+# --- Build a metro mask from SA2s and clip LGA/LHD to the metro extent ---
+# union of metro SA2 as clipping mask
+metro_mask <- sa2_metro_2021 %>%
+  st_union() %>%
+  st_make_valid()
+
+# intersection (clip to mask)
+lga_metro_clip_2021 <- st_intersection(lga_metro_2021, metro_mask)
+lhd_metro_clip_2021 <- st_intersection(lhd_metro_2021, metro_mask)
+
+# bbox for coord_sf
+bbox <- st_bbox(sa2_metro_2021)
+```
+
+```{r, include=FALSE}
+# ======== Create a data converting function  ========
+# Standardise the recurring “wide → long → map” process 
+
+build_long_sf_tag <- function(
+                              # Containing SA2 attributes and geometry
+                              map_sf,               
+                              
+                              # unique id column used to rejoin geometry (sa2_name_2021)
+                              id_col, 
+                              
+                              # Pivot into long form (indicators to facet)
+                              vars,
+                              
+                              # wslhd or metro
+                              tag = NULL,  
+                              
+                              facet_name = NULL,  # custom facet column name
+                              value_name = NULL   # custom value column name
+                              ) {                     
+  # Basic checks
+  stopifnot(inherits(map_sf, "sf"))
+  stopifnot(id_col %in% names(map_sf))
+
+  # Keep only variables that exist, and only numeric ones
+  vars <- intersect(vars, names(map_sf))
+  if (length(vars) == 0) {
+    stop("None of the requested vars exist in `map_sf`.")
+  }
+  is_num <- vapply(map_sf[vars], is.numeric, logical(1))
+  vars   <- vars[is_num]
+  if (length(vars) == 0) {
+    stop("None of the requested vars are numeric in `map_sf`.")
+  }
+
+  # Dynamically name facet/value columns 
+  facet_col <- facet_name %||%
+    if (!is.null(tag)) paste0("facet_var_", tag) else "facet_var"
+  value_col <- value_name %||%
+    if (!is.null(tag)) paste0("value_", tag) else "value"
+
+  # Wide -> long
+  long_df <- map_sf %>%
+    st_drop_geometry() %>%
+    select(all_of(c(id_col, vars))) %>%
+    pivot_longer(
+      cols      = all_of(vars),
+      names_to  = facet_col,
+      values_to = value_col
+    ) %>%
+    mutate(
+      !!facet_col := factor(.data[[facet_col]], levels = vars)
+    )
+
+  # Join geometry back and return sf
+  long_sf <- long_df %>%
+    left_join(st_as_sf(map_sf[, c(id_col, "geometry")]), by = id_col) %>%
+    st_as_sf()
+
+  # Store dynamic column names as attributes for downstream plotting
+  attr(long_sf, "facet_col") <- facet_col
+  attr(long_sf, "value_col") <- value_col
+
+  return(long_sf)
+}
+```
+
+```{r, include=FALSE}
+# ======== Create a plotting map function  ========
+# Produce faceted SA2 choropleths
+
+facet_sa2_maps <- function(
+  map_sf,                 # sf with attributes to plot (already filtered to region)
+  vars,                   # character vector of numeric columns to facet
+  title,                  # plot title
+  
+  # region & id
+  mode        = c("wslhd", "metro"),
+  id_col      = "sa2_name_2021",
+  tag         = NULL,     # "wslhd", "metro"
+  
+  # overlays
+  lga_sf      = NULL,     # WSLHD: LGA; Metro: clipped LGA layer
+  lhd_sf      = NULL,     # Metro only: clipped LHD layer
+  bbox        = NULL,     # Metro only: named vector from st_bbox()
+  
+  # legend & scale
+  legend_name = "Value",
+  label_fun   = comma,    # use percent for proportions
+  palette     = "plasma",
+  ncol        = 4,
+  limits      = NULL,             # if NULL -> auto from data; else c(min, max)
+  nice_by     = NULL,   
+  breaks      = NULL,             # if NULL -> ggplot decides
+  na_fill     = "grey",
+  
+  # boundary styling
+  lga_color   = "black",
+  lga_size    = 0.1,
+  lhd_color   = "green",
+  lhd_size    = 0.6
+) {
+  mode <- match.arg(mode)
+
+  # 1) Build long sf with tagged column names so multiple regions can coexist
+  long_sf <- build_long_sf_tag(
+    map_sf   = map_sf,
+    id_col   = id_col,
+    vars     = vars,
+    tag      = tag %||% mode      # default tag to the mode
+  )
+  facet_col <- attr(long_sf, "facet_col") 
+  value_col <- attr(long_sf, "value_col") 
+
+  # 2) Shared limits (for comparability across facets)
+  if (is.null(limits)) {
+    max_val <- max(long_sf[[value_col]], na.rm = TRUE)
+    min_val <- min(long_sf[[value_col]], na.rm = TRUE)
+    if (!is.null(nice_by) && is.finite(max_val)) {
+      max_val <- ceiling(max_val / nice_by) * nice_by
+    }
+    limits <- c(max(0, min_val, na.rm = TRUE), max_val)
+  }
+
+  # Build plot
+  facet_formula <- as.formula(paste("~", facet_col))
+
+  p <- ggplot(long_sf) +
+    geom_sf(aes(fill = .data[[value_col]]),
+            color = "white", linewidth = 0.05, show.legend = TRUE) +
+    
+    facet_wrap(facet_formula, ncol = ncol, labeller = label_value) +
+    
+    scale_fill_viridis_c(
+      option   = palette,
+      name     = legend_name,
+      labels   = label_fun,
+      oob      = scales::squish,
+      na.value = na_fill
+    ) +
+    labs(title = title) +
+    theme_minimal(base_size = 11) +
+    theme(
+      strip.text      = element_text(size = 8),
+      axis.text       = element_blank(),
+      axis.ticks      = element_blank(),
+      panel.grid      = element_blank(),
+      legend.position = "right"
+    )
+
+  # Overlays & cropping depend on mode
+  if (!is.null(lga_sf)) {
+    p <- p + geom_sf(data = lga_sf, inherit.aes = FALSE,
+                     fill = NA, color = lga_color, linewidth = lga_size, show.legend = FALSE)
+  }
+  if (mode == "metro") {
+    if (!is.null(lhd_sf)) {
+      p <- p + geom_sf(data = lhd_sf, inherit.aes = FALSE,
+                       fill = NA, color = lhd_color, linewidth = lhd_size, show.legend = FALSE)
+    }
+    if (!is.null(bbox)) {
+      p <- p + coord_sf(
+        xlim = c(bbox["xmin"], bbox["xmax"]),
+        ylim = c(bbox["ymin"], bbox["ymax"]),
+        expand = FALSE
+      )
+    }
+  }
+
+  return(p)
+}
+```
+
+```{r, include=FALSE}
+pop_size <- c("pop_size")
+
+# ---- Age ----
+age_count <- c(
+  "age_0_19","age_20_39","age_40_59","age_60_plus"
+)
+
+age_prop <- c(
+  "prop_age_0_19","prop_age_20_39","prop_age_40_59","prop_age_60_plus"
+)
+
+# ---- Country of Birth ----
+cob_count <- c("australia","overseas")
+cob_prop  <- c("prop_australia","prop_overseas")
+
+# ---- Language used at Home ----
+lang_count <- c("english","non_english")
+lang_prop  <- c("prop_english","prop_non_english")
+
+
+# ---- Education Level ----
+edu_count <- c("bachelor_above","bachelor_below")
+edu_prop  <- c("prop_bachelor_above","prop_bachelor_below")
+
+# ---- Occupation ----
+occupation_count <- c("managers_professionals","everyone_else")
+occupation_prop  <- c("prop_managers_professionals","prop_everyone_else")
+
+
+# ---- Income ----
+income_count <- c("less_md_income", "more_md_income")
+
+income_prop <- c("prop_less_md_income", "prop_more_md_income")
+
+
+# ---- Housing Type ----
+housing_type_count <- c("social_housing", "non_social_housing")
+housing_type_prop <- c("prop_social_housing", "prop_non_social_housing")
+    
+
+# ---- Health Conditions ----
+
+disease_prop <- c(
+  "prop_arthritis","prop_asthma","prop_cancer","prop_dementia","prop_diabetes",
+  "prop_heart_disease","prop_kidney_disease","prop_lung_condition",
+  "prop_mental_health","prop_stroke"
+)
+
+```
+
+
+```{r, echo=FALSE}
+p_pop_wslhd <- facet_sa2_maps(
+  map_sf      = map_wslhd_2021,
+  vars        = pop_size,
+  title       = NULL,
+  mode        = "wslhd",
+  lga_sf      = lga_wslhd_2021,
+  tag         = "wslhd",
+  legend_name = "Count",
+  label_fun   = comma
+)
+
+p_pop_wslhd
+
+p_pop_metro <- facet_sa2_maps(
+  map_sf      = map_metro_2021,
+  vars        = pop_size,
+  title       = NULL,
+  mode        = "metro",
+  lga_sf      = lga_metro_clip_2021,
+  lhd_sf      = lhd_metro_clip_2021,
+  bbox        = bbox, 
+  tag         = "metro",
+  legend_name = "Count",
+  label_fun   = comma,
+  ncol        = 4,
+)
+
+p_pop_metro
+
+# ggsave("p_pop_metro.png", p_pop_metro,
+#       width = 6, height = 4, units = "in", dpi = 600, bg = "white")
+# 
+# p_pop <- (p_pop_metro | p_pop_wslhd)
+# 
+# ggsave("p_pop.png", p_pop,
+#       width = 9, height = 6, units = "in", dpi = 600, bg = "white")
+```
+
+```{r, echo=FALSE}
+p_age_count_wslhd <- facet_sa2_maps(
+  map_sf      = map_wslhd_2021,
+  vars        = age_count,
+  title       = NULL,
+  mode        = "wslhd",
+  lga_sf      = lga_wslhd_2021,
+  tag         = "wslhd",
+  legend_name = "Count",
+  label_fun   = comma,
+  ncol        = 4
+)
+
+p_age_count_wslhd
+
+# ggsave("p_age_count_wslhd.png", p_age_count_wslhd,
+#      width = 6, height = 4, units = "in", dpi = 600, bg = "white")
+
+p_age_prop_wslhd <- facet_sa2_maps(
+  map_sf      = map_wslhd_2021,
+  vars        = age_prop,
+  title       = "Age Group - Proportions by SA2 (WSLHD, 2021)",
+  mode        = "wslhd", 
+  lga_sf      = lga_wslhd_2021,
+  tag         = "wslhd",
+  legend_name = "Proportion",
+  label_fun   = percent,
+  ncol        = 4
+)
+p_age_prop_wslhd
+
+p_age_count_metro <- facet_sa2_maps(
+  map_sf      = map_metro_2021,
+  vars        = age_count,
+  title       = "Age Group - Counts by SA2 (Sydney Metropolitan LHDs, 2021)",
+  mode        = "metro",
+  lga_sf      = lga_metro_clip_2021,
+  lhd_sf      = lhd_metro_clip_2021,
+  bbox        = bbox, 
+  tag         = "metro",
+  legend_name = "Count",
+  label_fun   = comma,
+  ncol        = 4,
+)
+
+p_age_count_metro
+
+p_age_prop_metro <- facet_sa2_maps(
+  map_sf      = map_metro_2021,
+  vars        = age_prop,
+  title       = "Age Group - Proportions by SA2 (Sydney Metropolitan LHDs, 2021)",
+  mode        = "metro", 
+  lga_sf      = lga_metro_clip_2021,
+  lhd_sf      = lhd_metro_clip_2021,
+  bbox        = bbox,
+  tag         = "metro",
+  legend_name = "Proportion",
+  label_fun   = percent,
+  ncol        = 4
+)
+
+p_age_prop_metro
+```
+
+```{r, echo=FALSE}
+p_cob_count_wslhd <- facet_sa2_maps(
+  map_sf      = map_wslhd_2021,
+  vars        = cob_count,
+  title       = "Country of Birth - Counts by SA2 (WSLHD, 2021)",,
+  mode        = "wslhd",
+  lga_sf      = lga_wslhd_2021,
+  tag         = "wslhd",
+  legend_name = "Count",
+  label_fun   = comma,
+  ncol        = 2
+)
+
+p_cob_count_wslhd
+
+p_cob_prop_wslhd <- facet_sa2_maps(
+  map_sf      = map_wslhd_2021,
+  vars        = cob_prop,
+  title       = NULL,
+  mode        = "wslhd", 
+  lga_sf      = lga_wslhd_2021,
+  tag         = "wslhd",
+  legend_name = "Proportion",
+  label_fun   = percent,
+  ncol        = 2
+)
+
+p_cob_prop_wslhd
+
+p_cob_count_metro <- facet_sa2_maps(
+  map_sf      = map_metro_2021,
+  vars        = cob_count,
+  title       = "Country of Birth - Counts by SA2 (Sydney Metropolitan LHDs, 2021)",
+  mode        = "metro",
+  lga_sf      = lga_metro_clip_2021,
+  lhd_sf      = lhd_metro_clip_2021,
+  bbox        = bbox,
+  tag         = "metro",
+  legend_name = "Count",
+  label_fun   = comma,
+  ncol        = 2
+)
+
+p_cob_count_metro
+
+p_cob_prop_metro <- facet_sa2_maps(
+  map_sf      = map_metro_2021,
+  vars        = cob_prop,
+  title       = "Country of Birth - Proportions by SA2 (Sydney Metropolitan LHDs, 2021)",
+  mode        = "metro", 
+  lga_sf      = lga_metro_clip_2021,
+  lhd_sf      = lhd_metro_clip_2021,
+  bbox        = bbox,
+  tag         = "metro",
+  legend_name = "Proportion",
+  label_fun   = percent,
+  ncol        = 2
+)
+
+p_cob_prop_metro
+```
+
+```{r, echo=FALSE}
+p_lang_count_wslhd <- facet_sa2_maps(
+  map_sf      = map_wslhd_2021,
+  vars        = lang_count,
+  title       = "Language Used at Home — Counts by SA2 (WSLHD, 2021)",
+  mode        = "wslhd",
+  lga_sf      = lga_wslhd_2021,
+  tag         = "wslhd",
+  legend_name = "Count",
+  label_fun   = comma,
+  ncol        = 2
+)
+p_lang_count_wslhd
+
+p_lang_prop_wslhd <- facet_sa2_maps(
+  map_sf      = map_wslhd_2021,
+  vars        = lang_prop,
+  title       = NULL,
+  mode        = "wslhd",
+  lga_sf      = lga_wslhd_2021,
+  tag         = "wslhd",
+  legend_name = "Proportion",
+  label_fun   = percent,
+  ncol        = 2
+)
+p_lang_prop_wslhd
+
+p_lang_count_metro <- facet_sa2_maps(
+  map_sf      = map_metro_2021,
+  vars        = lang_count,
+  title       = "Language Used at Home - Counts by SA2 (Sydney Metropolitan LHDs, 2021)",
+  mode        = "metro",
+  lga_sf      = lga_metro_clip_2021,
+  lhd_sf      = lhd_metro_clip_2021,
+  bbox        = bbox,
+  tag         = "metro",
+  legend_name = "Count",
+  label_fun   = comma,
+  ncol        = 2
+)
+p_lang_count_metro
+
+p_lang_prop_metro <- facet_sa2_maps(
+  map_sf      = map_metro_2021,
+  vars        = lang_prop,
+  title       = "Language Used at Home - Proportions by SA2 (Sydney Metropolitan LHDs, 2021)",
+  mode        = "metro",
+  lga_sf      = lga_metro_clip_2021,
+  lhd_sf      = lhd_metro_clip_2021,
+  bbox        = bbox,
+  tag         = "metro",
+  legend_name = "Proportion",
+  label_fun   = percent,
+  ncol        = 2
+)
+p_lang_prop_metro
+```
+
+```{r}
+p_cd_wslhd <- (p_cob_prop_wslhd | p_lang_prop_wslhd)
+
+# ggsave("p_cd_wslhd.png", p_cd_wslhd,
+#      width = 9, height = 6, units = "in", dpi = 600, bg = "white")
+```
+
+
+```{r, echo=FALSE}
+p_edu_count_wslhd <- facet_sa2_maps(
+  map_sf      = map_wslhd_2021,
+  vars        = edu_count,
+  title       = "Education Level — Counts by SA2 (WSLHD, 2021)",
+  mode        = "wslhd",
+  lga_sf      = lga_wslhd_2021,
+  tag         = "wslhd",
+  legend_name = "Count",
+  label_fun   = comma,
+  ncol        = 3
+)
+p_edu_count_wslhd
+
+
+p_edu_prop_wslhd <- facet_sa2_maps(
+  map_sf      = map_wslhd_2021,
+  vars        = edu_prop,
+  title       = "Education",
+  mode        = "wslhd",
+  lga_sf      = lga_wslhd_2021,
+  tag         = "wslhd",
+  legend_name = "Proportion",
+  label_fun   = percent,
+  ncol        = 3
+)
+p_edu_prop_wslhd
+
+p_edu_count_metro <- facet_sa2_maps(
+  map_sf      = map_metro_2021,
+  vars        = edu_count,
+  title       = "Education Level — Counts by SA2 (Sydney Metropolitan LHDs, 2021)",
+  mode        = "metro",
+  lga_sf      = lga_metro_clip_2021,
+  lhd_sf      = lhd_metro_clip_2021,
+  bbox        = bbox,
+  tag         = "metro",
+  legend_name = "Count",
+  label_fun   = comma,
+  ncol        = 3
+)
+p_edu_count_metro
+
+p_edu_prop_metro <- facet_sa2_maps(
+  map_sf      = map_metro_2021,
+  vars        = edu_prop,
+  title       = "Education Level — Proportions by SA2 (Sydney Metropolitan LHDs, 2021)",
+  mode        = "metro",
+  lga_sf      = lga_metro_clip_2021,
+  lhd_sf      = lhd_metro_clip_2021,
+  bbox        = bbox,
+  tag         = "metro",
+  legend_name = "Proportion",
+  label_fun   = percent,
+  ncol        = 3
+)
+p_edu_prop_metro
+```
+
+```{r, echo=FALSE}
+p_occ_count_wslhd <- facet_sa2_maps(
+  map_sf      = map_wslhd_2021,
+  vars        = occupation_count,
+  title       = "Occupation — Counts by SA2 (WSLHD, 2021)",
+  mode        = "wslhd",
+  lga_sf      = lga_wslhd_2021,
+  tag         = "wslhd",
+  legend_name = "Count",
+  label_fun   = comma,
+  ncol        = 2
+)
+p_occ_count_wslhd
+
+p_occ_prop_wslhd <- facet_sa2_maps(
+  map_sf      = map_wslhd_2021,
+  vars        = occupation_prop,
+  title       = NULL,
+  mode        = "wslhd",
+  lga_sf      = lga_wslhd_2021,
+  tag         = "wslhd",
+  legend_name = "Propotion",
+  label_fun   = percent,
+  ncol        = 2
+)
+p_occ_prop_wslhd
+
+p_occ_count_metro <- facet_sa2_maps(
+  map_sf      = map_metro_2021,
+  vars        = occupation_count,
+  title       = "Occupation — Counts by SA2 (Sydney Metropolitan LHDs, 2021)",
+  mode        = "metro",
+  lga_sf      = lga_metro_clip_2021,
+  lhd_sf      = lhd_metro_clip_2021,
+  bbox        = bbox,
+  tag         = "metro",
+  legend_name = "Count",
+  label_fun   = comma,
+  ncol        = 2
+)
+p_occ_count_metro
+
+p_occ_prop_metro <- facet_sa2_maps(
+  map_sf      = map_metro_2021,
+  vars        = occupation_prop,
+  title       = "Occupation — Proportions by SA2 (Sydney Metropolitan LHDs, 2021)",
+  mode        = "metro",
+  lga_sf      = lga_metro_clip_2021,
+  lhd_sf      = lhd_metro_clip_2021,
+  bbox        = bbox,
+  tag         = "metro",
+  legend_name = "Proportion",
+  label_fun   = percent,
+  ncol        = 2
+)
+p_occ_prop_metro
+```
+
+```{r}
+# p_sem_wslhd <- (p_edu_prop_wslhd | p_occ_prop_wslhd)
+# 
+# ggsave("p_sem_wslhd.png", p_sem_wslhd,
+#      width = 9, height = 6, units = "in", dpi = 600, bg = "white")
+```
+
+```{r, echo=FALSE}
+p_income_count_wslhd <- facet_sa2_maps(
+  map_sf      = map_wslhd_2021,
+  vars        = income_count,
+  title       = "Personal Income — Counts by SA2 (WSLHD, 2021)",
+  mode        = "wslhd",
+  lga_sf      = lga_wslhd_2021,
+  tag         = "wslhd",
+  legend_name = "Count",
+  label_fun   = comma,
+  ncol        = 2
+)
+p_income_count_wslhd
+
+p_income_prop_wslhd <- facet_sa2_maps(
+  map_sf      = map_wslhd_2021,
+  vars        = income_prop,
+  title       = "Personal Income — Proportions by SA2 (WSLHD, 2021)",
+  mode        = "wslhd",
+  lga_sf      = lga_wslhd_2021,
+  tag         = "wslhd",
+  legend_name = "Proportion",
+  label_fun   = percent,
+  ncol        = 2
+)
+p_income_prop_wslhd
+
+p_income_count_metro <- facet_sa2_maps(
+  map_sf      = map_metro_2021,
+  vars        = income_count,
+  title       = "Personal Income — Counts by SA2 (Sydney Metropolitan LHDs, 2021)",
+  mode        = "metro",
+  lga_sf      = lga_metro_clip_2021,
+  lhd_sf      = lhd_metro_clip_2021,
+  bbox        = bbox,
+  tag         = "metro",
+  legend_name = "Count",
+  label_fun   = comma,
+  ncol        = 2
+)
+p_income_count_metro
+
+p_income_prop_metro <- facet_sa2_maps(
+  map_sf      = map_metro_2021,
+  vars        = income_prop,
+  title       = "Personal Income — Proportions by SA2 (Sydney Metropolitan LHDs, 2021)",
+  mode        = "metro",
+  lga_sf      = lga_metro_clip_2021,
+  lhd_sf      = lhd_metro_clip_2021,
+  bbox        = bbox,
+  tag         = "metro",
+  legend_name = "Proportion",
+  label_fun   = percent,
+  ncol        = 2
+)
+p_income_prop_metro
+```
+
+```{r, echo=FALSE}
+p_housing_type_count_wslhd <- facet_sa2_maps(
+  map_sf      = map_wslhd_2021,
+  vars        = housing_type_count,
+  title       = "Housing Type — Counts by SA2 (WSLHD, 2021)",
+  mode        = "wslhd",
+  lga_sf      = lga_wslhd_2021,
+  tag         = "wslhd",
+  legend_name = "Count",
+  label_fun   = comma,
+  ncol        = 3
+)
+p_housing_type_count_wslhd
+
+p_housing_type_prop_wslhd <- facet_sa2_maps(
+  map_sf      = map_wslhd_2021,
+  vars        = housing_type_prop,
+  title       = "Housing Type — Proportions by SA2 (WSLHD, 2021)",
+  mode        = "wslhd",
+  lga_sf      = lga_wslhd_2021,
+  tag         = "wslhd",
+  legend_name = "Proportion",
+  label_fun   = percent,
+  ncol        = 3
+)
+p_housing_type_prop_wslhd
+
+p_housing_type_count_metro <- facet_sa2_maps(
+  map_sf      = map_metro_2021,
+  vars        = housing_type_count,
+  title       = "Housing Type — Counts by SA2 (Sydney Metropolitan LHDs, 2021)",
+  mode        = "metro",
+  lga_sf      = lga_metro_clip_2021,
+  lhd_sf      = lhd_metro_clip_2021,
+  bbox        = bbox,
+  tag         = "metro",
+  legend_name = "Count",
+  label_fun   = comma,
+  ncol        = 3
+)
+p_housing_type_count_metro
+
+p_housing_type_prop_metro <- facet_sa2_maps(
+  map_sf      = map_metro_2021,
+  vars        = housing_type_prop,
+  title       = "Housing Type — Proportions by SA2 (Sydney Metropolitan LHDs, 2021)",
+  mode        = "metro",
+  lga_sf      = lga_metro_clip_2021,
+  lhd_sf      = lhd_metro_clip_2021,
+  bbox        = bbox,
+  tag         = "metro",
+  legend_name = "Proportion",
+  label_fun   = percent,
+  ncol        = 3
+)
+p_housing_type_prop_metro
+```
+
+```{r, echo=FALSE}
+p_disease_prop_wslhd <- facet_sa2_maps(
+  map_sf      = map_wslhd_2021,
+  vars        = disease_prop,
+  title       = NULL,
+  mode        = "wslhd",
+  lga_sf      = lga_wslhd_2021,
+  tag         = "wslhd",
+  legend_name = "Proportion",
+  label_fun   = percent,
+  ncol        = 5
+)
+p_disease_prop_wslhd
+
+p_disease_prop_metro <- facet_sa2_maps(
+  map_sf      = map_metro_2021,
+  vars        = disease_prop,
+  title       = "Disease Overall Proportions by SA2 (Sydney Metropolitan LHDs, 2021)",
+  mode        = "metro",
+  lga_sf      = lga_metro_clip_2021,
+  lhd_sf      = lhd_metro_clip_2021,
+  bbox        = bbox,
+  tag         = "metro",
+  legend_name = "Proportion",
+  label_fun   = percent,
+  ncol        = 5
+)
+p_disease_prop_metro
+```
+
+```{r}
+# ggsave("p_disease_prop_wslhd.png", p_disease_prop_wslhd,
+#      width = 9, height = 6, units = "in", dpi = 600, bg = "white")
+```
