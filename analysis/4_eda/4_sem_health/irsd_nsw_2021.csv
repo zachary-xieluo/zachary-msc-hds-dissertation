@@ -1,0 +1,627 @@
+"sa2_name_2021","irsd_score","rank_nsw","irsd_decile","irsd_percentile"
+"Braidwood",1024,368,6,59
+"Karabar",994,273,5,44
+"Queanbeyan",1010,328,6,53
+"Queanbeyan - East",1025,369,6,59
+"Queanbeyan West - Jerrabomberra",1098,580,10,93
+"Googong",1128,626,10,100
+"Queanbeyan Surrounds",1098,577,10,93
+"Bombala",965,180,3,29
+"Cooma",982,232,4,38
+"Cooma Surrounds",1039,414,7,67
+"Jindabyne - Berridale",1054,457,8,73
+"Batemans Bay",946,126,3,21
+"Batemans Bay - South",989,251,5,41
+"Bega - Tathra",975,208,4,34
+"Bega-Eden Hinterland",991,256,5,41
+"Broulee - Tomakin",1034,396,7,64
+"Deua - Wadbilliga",1025,370,6,60
+"Eden",910,71,2,12
+"Eurobodalla Hinterland",995,276,5,45
+"Merimbula - Tura Beach",1012,334,6,54
+"Moruya - Tuross Head",993,269,5,43
+"Narooma - Bermagui",986,241,4,39
+"Goulburn",957,156,3,25
+"Goulburn Surrounds",1017,348,6,56
+"Yass",1018,351,6,56
+"Yass Surrounds",1086,542,9,87
+"Young",940,114,2,19
+"Young Surrounds",970,191,4,31
+"Avoca Beach - Copacabana",1079,514,9,82
+"Box Head - MacMasters Beach",1064,488,8,78
+"Calga - Kulnura",1027,376,6,60
+"Erina - Green Point",1033,393,7,63
+"Gosford - Springfield",983,233,4,38
+"Kariong",1035,402,7,65
+"Kincumber - Picketts Valley",1013,339,6,55
+"Narara",1026,373,6,60
+"Niagara Park - Lisarow",1040,416,7,67
+"Point Clare - Koolewong",1033,391,7,63
+"Saratoga - Davistown",1056,464,8,75
+"Terrigal - North Avoca",1078,510,9,82
+"Umina - Booker Bay - Patonga",977,216,4,35
+"Wamberal - Forresters Beach",1081,519,9,83
+"Woy Woy - Blackwall",951,137,3,22
+"Wyoming",981,227,4,37
+"Bateau Bay - Killarney Vale",991,260,5,42
+"Blue Haven - San Remo",920,80,2,13
+"Budgewoi - Buff Point - Halekulani",954,147,3,24
+"Chittaway Bay - Tumbi Umbi",1018,352,6,57
+"Gorokan - Kanwal - Charmhaven",917,76,2,13
+"Jilliby - Yarramalong",1060,471,8,76
+"Lake Munmorah - Mannering Park",952,141,3,23
+"Ourimbah - Fountaindale",1052,451,8,72
+"Summerland Point - Gwandalan",981,231,4,37
+"The Entrance",945,123,2,20
+"Toukley - Norah Head",939,111,2,18
+"Tuggerah - Kangy Angy",1013,338,6,54
+"Warnervale - Wadalba",1002,301,5,49
+"Wyong",897,60,1,10
+"Bathurst - East",984,234,4,38
+"Bathurst Surrounds",1049,441,8,71
+"Oberon",965,178,3,29
+"Bathurst - South",939,113,2,19
+"Bathurst - West",1011,330,6,53
+"Condobolin",947,128,3,21
+"Cowra",914,73,2,12
+"Cowra Surrounds",974,201,4,33
+"Forbes",968,185,3,30
+"Grenfell",960,162,3,26
+"Parkes (NSW)",946,127,3,21
+"Parkes Surrounds",950,133,3,22
+"West Wyalong",993,266,5,43
+"Lithgow",910,69,2,12
+"Lithgow Surrounds",971,193,4,31
+"Mudgee",990,253,5,41
+"Mudgee Surrounds - East",899,62,1,10
+"Mudgee Surrounds - West",987,245,4,40
+"Blayney",991,262,5,42
+"Orange",956,149,3,24
+"Orange - North",1027,374,6,60
+"Orange Surrounds",1048,438,7,70
+"Grafton",907,66,2,11
+"Grafton Surrounds",951,139,3,23
+"Maclean - Yamba - Iluka",967,183,3,30
+"Bellingen",992,264,5,43
+"Coffs Harbour - North",940,117,2,19
+"Coffs Harbour - South",929,95,2,16
+"Coramba - Nana Glen - Bucca",1024,367,6,59
+"Dorrigo",948,130,3,21
+"Korora - Emerald Beach",1053,454,8,73
+"Sawtell - Boambee",976,211,4,34
+"Urunga",968,184,3,30
+"Woolgoolga - Arrawarra",972,197,4,32
+"Bourke - Brewarrina",910,70,2,12
+"Cobar",965,182,3,30
+"Coonamble",893,54,1,9
+"Nyngan - Warren",953,144,3,23
+"Walgett - Lightning Ridge",883,44,1,8
+"Broken Hill",913,72,2,12
+"Far West",879,42,1,7
+"Coonabarabran",924,88,2,15
+"Dubbo - East",975,207,4,34
+"Dubbo - South",1004,307,5,49
+"Dubbo - West",976,210,4,34
+"Dubbo Surrounds",1048,434,7,70
+"Gilgandra",933,102,2,17
+"Narromine",960,163,3,26
+"Wellington",922,85,2,14
+"Branxton - Greta - Pokolbin",1021,361,6,58
+"Cessnock",895,56,1,9
+"Cessnock Surrounds",1000,292,5,47
+"Dungog",1009,324,6,52
+"Kurri Kurri - Abermain",924,87,2,14
+"Singleton",984,235,4,38
+"Singleton Surrounds",1012,337,6,54
+"Maitland",987,247,4,40
+"Maitland - North",1064,486,8,78
+"East Maitland - Metford",978,219,4,35
+"Rutherford (North) - Aberglasslyn",987,246,4,40
+"Rutherford (South) - Telarah",922,84,2,14
+"Tenambit - East Maitland",976,212,4,34
+"Thornton - Millers Forest",1034,395,7,63
+"Anna Bay",1009,323,6,52
+"Lemon Tree Passage - Tanilba Bay",937,110,2,18
+"Nelson Bay Peninsula",1002,300,5,48
+"Raymond Terrace",897,59,1,10
+"Seaham - Woodville",1061,474,8,76
+"Tea Gardens - Hawks Nest",998,289,5,47
+"Williamtown - Medowie - Karuah",1005,311,5,50
+"Muswellbrook",918,77,2,13
+"Muswellbrook Surrounds",995,277,5,45
+"Scone",975,203,4,33
+"Scone Surrounds",975,205,4,33
+"Dapto - Avondale",970,190,4,31
+"Horsley - Kembla Grange",1048,437,7,70
+"Unanderra - Mount Kembla",1011,333,6,54
+"Berkeley - Lake Heights - Cringila",887,48,1,8
+"Port Kembla - Warrawong",851,26,1,5
+"Windang - Primbee",940,115,2,19
+"Albion Park - Macquarie Pass",1032,388,7,62
+"Albion Park Rail",931,99,2,16
+"Kiama",1056,463,8,74
+"Kiama Downs - Minnamurra",1077,509,9,82
+"Kiama Hinterland - Gerringong",1080,516,9,83
+"Shellharbour - Flinders",1045,429,7,69
+"Shellharbour - Oak Flats",981,230,4,37
+"Warilla",897,58,1,10
+"Balgownie - Fairy Meadow",1007,317,6,51
+"Corrimal - Tarrawanna - Bellambi",962,167,3,27
+"Figtree - Keiraville",1038,412,7,66
+"Helensburgh",1087,545,9,87
+"Thirroul - Austinmer - Coalcliff",1096,571,10,92
+"Woonona - Bulli - Russell Vale",1038,413,7,66
+"Wollongong - East",1015,344,6,55
+"Wollongong - West",991,258,5,42
+"Bulahdelah - Stroud",946,125,2,20
+"Forster",953,143,3,23
+"Forster-Tuncurry Surrounds",976,209,4,34
+"Tuncurry",908,67,2,11
+"Kempsey",857,31,1,5
+"Kempsey Surrounds",943,120,2,20
+"Macksville - Scotts Head",924,89,2,15
+"Nambucca Heads",882,43,1,7
+"Nambucca Heads Surrounds",952,142,3,23
+"South West Rocks",958,157,3,26
+NA,1053,452,8,73
+"Laurieton - Bonny Hills",978,220,4,36
+"Port Macquarie - West",964,176,3,29
+"Port Macquarie Surrounds",991,255,5,41
+"Wauchope",965,181,3,29
+"Port Macquarie - East",1002,297,5,48
+"Port Macquarie - South",1020,356,6,57
+"Gloucester",943,119,2,19
+"Old Bar - Manning Point - Red Head",1010,329,6,53
+"Taree",879,41,1,7
+"Taree Surrounds",959,159,3,26
+"Wingham",904,63,2,11
+"Albury - East",1035,403,7,65
+"Albury - North",928,94,2,15
+"Albury - South",991,261,5,42
+"Albury Surrounds",1012,336,6,54
+"Lavington",888,50,1,8
+"Hay",957,154,3,25
+"Wentworth - Buronga",971,194,4,31
+"Wentworth-Balranald Region",965,179,3,29
+"Corowa",948,131,3,21
+"Corowa Surrounds",990,254,5,41
+"Deniliquin",951,140,3,23
+"Deniliquin Surrounds",987,244,4,39
+"Moama",1022,365,6,59
+"Tocumwal - Finley - Jerilderie",969,189,4,31
+"Armidale",978,218,4,35
+"Armidale Surrounds - North",986,243,4,39
+"Armidale Surrounds - South",1007,318,6,51
+"Walcha",993,271,5,44
+"Glen Innes",906,65,2,11
+"Inverell",921,82,2,14
+"Inverell Surrounds - East",923,86,2,14
+"Inverell Surrounds - West",958,158,3,26
+"Tenterfield",920,81,2,13
+"Moree",926,91,2,15
+"Moree Surrounds",973,198,4,32
+"Narrabri",969,186,3,30
+"Narrabri Surrounds",971,195,4,32
+"Gunnedah",954,146,3,24
+"Gunnedah Surrounds",980,225,4,36
+"Quirindi",926,90,2,15
+"Tamworth - East",950,134,3,22
+"Tamworth - North",986,240,4,39
+"Tamworth - West",813,15,1,3
+"Tamworth Surrounds",998,288,5,46
+"Belmont - Bennetts Green",1002,298,5,48
+"Belmont South - Blacksmiths",951,136,3,22
+"Charlestown - Dudley",1025,372,6,60
+"Glendale - Cardiff - Hillsborough",1017,347,6,56
+"Mount Hutton - Windale",873,36,1,6
+"Redhead",1043,424,7,68
+"Swansea - Caves Beach",1001,296,5,48
+"Valentine - Eleebana",1084,537,9,86
+"Warners Bay - Boolaroo",1029,383,7,62
+"Bolton Point - Teralba",963,170,3,28
+"Bonnells Bay - Silverwater",993,267,5,43
+"Edgeworth - Cameron Park",1021,362,6,58
+"Morisset - Cooranbong",980,224,4,36
+"Toronto - Awaba",975,206,4,33
+"Wangi Wangi - Rathmines",1021,360,6,58
+"West Wallsend - Barnsley - Killingworth",995,280,5,45
+"Adamstown - Kotara",1061,475,8,76
+"Beresfield - Hexham",891,52,1,9
+"Hamilton - Broadmeadow",999,290,5,47
+"Lambton - New Lambton",1034,397,7,64
+"Maryland - Fletcher - Minmi",1032,389,7,63
+"Mayfield - Warabrook",986,242,4,39
+"Merewether - The Junction",1083,534,9,86
+"Newcastle - Cooks Hill",1048,439,8,71
+"Shortland - Jesmond",930,96,2,16
+"Stockton - Fullerton Cove",1001,294,5,47
+"Wallsend - Elermore Vale",976,213,4,34
+"Waratah - North Lambton",992,263,5,42
+"Wickham - Carrington - Tighes Hill",1033,394,7,63
+"Ballina",975,204,4,33
+"Ballina Surrounds",1028,378,7,61
+"Bangalow",1065,490,8,79
+"Brunswick Heads - Ocean Shores",1004,304,5,49
+"Byron Bay",1029,380,7,61
+"Evans Head",955,148,3,24
+"Lennox Head - Skennars Head",1071,500,8,80
+"Mullumbimby",993,272,5,44
+"Casino",891,53,1,9
+"Casino Surrounds",943,121,2,20
+"Goonellabah",969,188,3,30
+"Kyogle",930,98,2,16
+"Lismore",916,74,2,12
+"Lismore Surrounds",1012,335,6,54
+"Kingscliff - Fingal Head",1029,382,7,61
+"Murwillumbah",934,106,2,17
+"Murwillumbah Surrounds",996,282,5,45
+"Pottsville",1018,350,6,56
+"Tweed Heads",973,200,4,32
+"Banora Point",995,278,5,45
+"Terranora - North Tumbulgum",1062,482,8,77
+"Tweed Heads South",917,75,2,12
+"Griffith (NSW)",956,152,3,25
+"Griffith Surrounds",1001,293,5,47
+"Leeton",949,132,3,22
+"Narrandera",928,93,2,15
+"Tumbarumba",962,168,3,27
+"Tumut",930,97,2,16
+"Tumut Surrounds",977,217,4,35
+"Cootamundra",947,129,3,21
+"Gundagai",965,177,3,29
+"Junee",932,101,2,17
+"Temora",963,171,3,28
+"Wagga Wagga - East",1009,327,6,53
+"Wagga Wagga - North",1053,456,8,73
+"Wagga Wagga - South",961,164,3,27
+"Wagga Wagga - West",926,92,2,15
+"Wagga Wagga Surrounds",1032,387,7,62
+"Berry - Kangaroo Valley",1048,436,7,70
+"Callala Bay - Currarong",1001,295,5,48
+"Culburra Beach",987,249,4,40
+"Ettrema - Sassafras - Budawang",1087,548,9,88
+"Huskisson - Vincentia",1053,453,8,73
+"North Nowra - Bomaderry",985,238,4,38
+"Nowra",919,78,2,13
+"St Georges Basin - Erowal Bay",951,135,3,22
+"Sussex Inlet - Berrara",956,150,3,24
+"Tomerong - Wandandian - Woollamia",1036,404,7,65
+"Ulladulla",995,274,5,44
+"Ulladulla Surrounds",1008,319,6,51
+"Bowral",1071,497,8,80
+"Hill Top - Colo Vale",1027,375,6,60
+"Mittagong",1030,386,7,62
+"Moss Vale - Berrima",1023,366,6,59
+"Robertson - Fitzroy Falls",1074,504,9,81
+"Southern Highlands",1055,461,8,74
+"Baulkham Hills - East",1079,512,9,82
+"Baulkham Hills (West) - Bella Vista",1103,593,10,95
+"Glenhaven",1118,620,10,99
+"West Pennant Hills",1118,621,10,100
+"Castle Hill - Central",1079,513,9,82
+"Castle Hill - East",1059,470,8,75
+"Castle Hill - North",1092,561,9,90
+"Castle Hill - South",1082,525,9,84
+"Castle Hill - West",1120,622,10,100
+"Cherrybrook",1110,607,10,97
+"Kellyville - East",1100,585,10,94
+"Kellyville - West",1103,591,10,95
+"Dural - Kenthurst - Wisemans Ferry",1087,544,9,87
+"Galston - Laughtondale",1090,554,9,89
+"Bilpin - Colo - St Albans",1037,409,7,66
+"Kurrajong Heights - Ebenezer",1062,480,8,77
+"Pitt Town - McGraths Hill",1062,479,8,77
+"Box Hill - Nelson",1106,599,10,96
+"North Kellyville",1107,602,10,97
+"Rouse Hill - Beaumont Hills",1101,586,10,94
+"Blacktown (East) - Kings Park",951,138,3,23
+"Blacktown (North) - Marayong",956,151,3,25
+"Doonside - Woodcroft",963,169,3,27
+"Lalor Park - Kings Langley",1002,299,5,48
+"Blacktown - South",959,160,3,26
+"Blacktown - West",962,165,3,27
+"Seven Hills - Prospect",1005,310,5,50
+"Toongabbie - West",988,250,4,40
+"Glenwood",1084,538,9,86
+"Acacia Gardens",1080,517,9,83
+"Quakers Hill",1054,459,8,74
+"Kellyville Ridge - The Ponds",1102,588,10,94
+"Marsden Park - Shanes Park",1089,550,9,88
+"Riverstone",1022,363,6,58
+"Schofields (West) - Colebee",1098,581,10,93
+"Schofields - East",1083,532,9,85
+"Stanhope Gardens - Parklea",1082,526,9,84
+"Bidwill - Hebersham - Emerton",778,6,1,1
+"Glendenning - Dean Park",984,237,4,38
+"Hassall Grove - Plumpton",986,239,4,39
+"Lethbridge Park - Tregear",838,18,1,3
+"Mount Druitt - Whalan",859,32,1,6
+"Rooty Hill - Minchinbury",972,196,4,32
+"Banksmeadow",1084,536,9,86
+"Botany",1053,455,8,73
+"Pagewood - Hillsdale - Daceyville",991,259,5,42
+"Eastlakes",936,107,2,18
+"Mascot",1033,392,7,63
+"Petersham - Stanmore",1069,495,8,79
+"Sydenham - Tempe - St Peters",1056,462,8,74
+"Marrickville - North",1042,423,7,68
+"Marrickville - South",1006,314,6,51
+"Darlinghurst",1064,485,8,78
+"Erskineville - Alexandria",1103,594,10,95
+"Glebe - Forest Lodge",1022,364,6,59
+"Potts Point - Woolloomooloo",1050,446,8,72
+"Surry Hills",1034,399,7,64
+"Camperdown - Darlington",1087,546,9,88
+"Chippendale",1013,341,6,55
+"Newtown (NSW)",1065,493,8,79
+"Pyrmont",1042,421,7,68
+"Redfern",981,228,4,37
+"Rosebery - Beaconsfield",1082,527,9,85
+"Sydney (North) - Millers Point",1063,484,8,78
+"Sydney (South) - Haymarket",937,109,2,18
+"Ultimo",960,161,3,26
+"Waterloo",969,187,3,30
+"Zetland",1071,499,8,80
+"Bondi - Tamarama - Bronte",1096,572,10,92
+"Bondi Beach - North Bondi",1095,567,10,91
+"Bondi Junction - Waverly",1081,521,9,84
+"Dover Heights",1099,582,10,93
+"Paddington - Moore Park",1100,583,10,93
+"Rose Bay - Vaucluse - Watsons Bay",1114,615,10,99
+"Woollahra",1106,601,10,96
+"Bellevue Hill",1117,618,10,99
+"Double Bay - Darling Point",1102,589,10,94
+"Kensington (NSW)",1071,501,8,80
+"Kingsford",1032,390,7,63
+"Maroubra - North",1083,530,9,85
+"Maroubra - South",989,252,5,41
+"Maroubra - West",1051,449,8,72
+"Randwick - North",1091,559,9,90
+"Randwick - South",1087,547,9,88
+"Coogee - Clovelly",1114,614,10,98
+"Malabar - La Perouse",1041,419,7,67
+"Matraville - Chifley",1019,355,6,57
+"South Coogee",993,270,5,44
+"Bass Hill - Georges Hall",887,49,1,8
+"Chullora",1006,313,5,50
+"Condell Park",908,68,2,11
+"Padstow",1004,306,5,49
+"Revesby",980,223,4,36
+"Yagoona - Birrong",877,40,1,7
+"Bankstown - North",854,28,1,5
+"Bankstown - South",843,20,1,4
+"Greenacre - North",895,57,1,10
+"Greenacre - South",889,51,1,9
+"Panania (North) - Milperra",1021,359,6,58
+"Panania (South) - Picnic Point",1039,415,7,67
+"Belmore - Belfield",933,103,2,17
+"Punchbowl",847,23,1,4
+"Roselands",970,192,4,31
+"Lakemba",810,14,1,3
+"Wiley Park",846,22,1,4
+"Campsie - North",883,45,1,8
+"Campsie - South",843,21,1,4
+"Canterbury - South",977,214,4,35
+"Earlwood",1037,407,7,65
+"Kingsgrove - North",992,265,5,43
+"Narwee - Beverly Hills",964,173,3,28
+"Oatley - Hurstville Grove",1083,531,9,85
+"Peakhurst - Lugarno",1043,428,7,69
+"Riverwood",856,30,1,5
+"South Hurstville - Blakehurst",1011,331,6,53
+"Hurstville - Central",931,100,2,16
+"Hurstville - North",979,222,4,36
+"Mortdale - Oatley",1061,477,8,77
+"Penshurst",987,248,4,40
+"Kingsgrove (South) - Bardwell Park",1014,342,6,55
+"Kogarah",1005,312,5,50
+"Kogarah Bay - Carlton - Allawah",1009,325,6,52
+"Monterey - Brighton-le-Sands - Kyeemagh",1005,309,5,50
+"Rockdale - Banksia",974,202,4,33
+"Sans Souci - Ramsgate",1030,384,7,62
+"Arncliffe - Bardwell Valley",984,236,4,38
+"Bexley - North",996,281,5,45
+"Bexley - South",980,226,4,37
+"Wolli Creek",1041,418,7,67
+"Concord - Mortlake - Cabarita",1071,498,8,80
+"Drummoyne - Rodd Point",1090,557,9,89
+"Five Dock - Abbotsford",1062,481,8,77
+"Concord West - North Strathfield",1061,476,8,76
+"Rhodes",1057,466,8,75
+"Balmain",1089,551,9,88
+"Lilyfield - Rozelle",1088,549,9,88
+"Annandale (NSW)",1096,570,10,91
+"Leichhardt",1076,506,9,81
+"Canterbury (North) - Ashbury",1034,398,7,64
+"Croydon Park - Enfield",1018,349,6,56
+"Dulwich Hill - Lewisham",1051,450,8,72
+"Haberfield - Summer Hill",1073,502,9,81
+"Homebush",998,286,5,46
+"Strathfield South",1036,405,7,65
+"Ashfield - North",1006,315,6,51
+"Ashfield - South",1009,326,6,52
+"Burwood (NSW)",940,116,2,19
+"Croydon",1015,343,6,55
+"Strathfield - East",979,221,4,36
+"Strathfield - West",1080,515,9,83
+"Chatswood (West) - Lane Cove North",1082,523,9,84
+"St Leonards - Naremburn",1090,558,9,89
+"Artarmon",1062,478,8,77
+"Castle Cove - Northbridge",1124,623,10,100
+"Chatswood - East",1029,381,7,61
+"Greenwich - Riverview",1128,625,10,100
+"Lane Cove",1098,575,10,92
+"Willoughby",1090,552,9,89
+"Asquith - Mount Colah",1085,539,9,86
+"Berowra - Brooklyn - Cowan",1100,584,10,94
+"Normanhurst - Thornleigh - Westleigh",1094,565,10,91
+"Hornsby - East",1002,302,5,49
+"Hornsby - West",1068,494,8,79
+"Wahroonga (West) - Waitara",1046,431,7,69
+"Gordon - Killara",1090,553,9,89
+"Lindfield - Roseville",1109,605,10,97
+"Pymble",1116,617,10,99
+"St Ives",1109,606,10,97
+"Turramurra",1112,611,10,98
+"Wahroonga (East) - Warrawee",1116,616,10,99
+"Cremorne - Cammeray",1102,587,10,94
+"Crows Nest - Waverton",1105,598,10,96
+"Neutral Bay - Kirribilli",1083,529,9,85
+"North Sydney - Lavender Bay",1093,564,9,90
+"Mosman - North",1107,603,10,97
+"Mosman - South",1112,610,10,98
+"Balgowlah - Clontarf - Seaforth",1114,613,10,98
+"Manly - Fairlight",1105,597,10,96
+"Avalon - Palm Beach",1102,590,10,95
+"Bayview - Elanora Heights",1098,576,10,92
+"Newport - Bilgola",1104,595,10,95
+"Mona Vale - Warriewood (North)",1085,540,9,87
+"North Narrabeen - Warriewood (South)",1083,535,9,86
+"Beacon Hill - Narraweena",1051,447,8,72
+"Cromer",1082,528,9,85
+"Forestville - Killarney Heights",1095,568,10,91
+"Freshwater - Brookvale",1097,574,10,92
+"Manly Vale - Allambie Heights",1090,556,9,89
+"Terrey Hills - Duffys Forest",1106,600,10,96
+"Belrose",1098,579,10,93
+"Collaroy - Collaroy Plateau",1091,560,9,90
+"Dee Why (South) - North Curl Curl",1082,524,9,84
+"Dee Why - North",1025,371,6,60
+"Frenchs Forest - Oxford Falls",1112,609,10,98
+"Narrabeen - Wheeler Heights",1059,468,8,75
+"Camden - Ellis Lane",1041,420,7,67
+"Currans Hill",1021,358,6,58
+"Elderslie - Narellan",1038,411,7,66
+"Harrington Park",1078,511,9,82
+"Mount Annan",1040,417,7,67
+"Spring Farm",1058,467,8,75
+"Bradbury - Wedderburn",906,64,2,11
+"Campbelltown - Woodbine",953,145,3,24
+"Claymore - Eagle Vale - Raby",939,112,2,18
+"Leumeah - Minto Heights",957,155,3,25
+"Minto - St Andrews",941,118,2,19
+"Rosemeadow - Glen Alpine",934,105,2,17
+"Denham Court - Bardia",1056,465,8,75
+"Glenfield",1008,321,6,52
+"Ingleburn",964,175,3,28
+"Macquarie Fields",866,33,1,6
+"Bargo",1011,332,6,53
+"Douglas Park - Appin",1074,505,9,81
+"Picton - Tahmoor - Buxton",1016,345,6,56
+"The Oaks - Oakdale",1054,460,8,74
+"Blackheath - Megalong Valley",1016,346,6,56
+"Blaxland - Warrimoo - Lapstone",1081,518,9,83
+"Katoomba - Leura",993,268,5,43
+"Lawson - Hazelbrook - Linden",1037,406,7,65
+"Springwood - Winmalee",1070,496,8,80
+"Wentworth Falls",1043,427,7,69
+"Cambridge Park",981,229,4,37
+"Emu Plains - Leonay",1049,444,8,71
+"Glenmore Park - Regentville",1054,458,8,74
+"Jamisontown - South Penrith",998,287,5,46
+"Kingswood - Werrington",964,174,3,28
+"Mulgoa - Luddenham - Orchard Hills",1065,489,8,78
+"Penrith",934,104,2,17
+"Warragamba - Silverdale",1048,435,7,70
+"Cranebrook - Castlereagh",996,285,5,46
+"Jordan Springs - Llandilo",1049,443,8,71
+"Richmond - Clarendon",996,284,5,46
+"Windsor - Bligh Park",973,199,4,32
+"Yarramundi - Londonderry",1013,340,6,55
+"Erskine Park",1030,385,7,62
+"St Clair",999,291,5,47
+"Colyton - Oxley Park",919,79,2,13
+"St Marys - North St Marys",895,55,1,9
+"Auburn - Central",804,13,1,3
+"Auburn - North",799,10,1,2
+"Auburn - South",853,27,1,5
+"Berala",875,38,1,7
+"Lidcombe",943,122,2,20
+"Regents Park",868,35,1,6
+"Silverwater - Newington",1050,445,8,71
+"Wentworth Point - Sydney Olympic Park",1051,448,8,72
+"Ermington - Rydalmere",1008,320,6,52
+"Oatlands - Dundas Valley",1004,305,5,49
+"Carlingford - East",1063,483,8,78
+"Carlingford - West",1043,426,7,68
+"Chester Hill - Sefton",855,29,1,5
+"Fairfield - East",785,8,1,2
+"Granville - Clyde",867,34,1,6
+"Guildford - South Granville",801,11,1,2
+"Guildford West - Merrylands West",876,39,1,7
+"Greystanes - South",1009,322,6,52
+"Merrylands - Holroyd",884,47,1,8
+"Pemulwuy - Greystanes (North)",1047,432,7,69
+"South Wentworthville",957,153,3,25
+"North Parramatta",1007,316,6,51
+"North Rocks",1092,562,9,90
+"Northmead",1037,408,7,66
+"Toongabbie - Constitution Hill",1020,357,6,57
+"Winston Hills",1083,533,9,86
+"Pendle Hill - Girraween",996,283,5,46
+"Wentworthville - Westmead",1004,308,5,50
+"Parramatta - North",1018,353,6,57
+"Parramatta - South",962,166,3,27
+"Rosehill - Harris Park",963,172,3,28
+"Pennant Hills - Cheltenham",1103,592,10,95
+"Epping (East) - North Epping",1081,520,9,83
+"Epping (NSW) - West",1061,473,8,76
+"Gladesville - Huntleys Point",1086,541,9,87
+"Hunters Hill - Woolwich",1111,608,10,97
+"Macquarie Park - Marsfield",1043,425,7,68
+"North Ryde - East Ryde",1076,507,9,81
+"West Ryde - Meadowbank",1049,440,8,71
+"Putney",1113,612,10,98
+"Denistone",1087,543,9,87
+"Eastwood",1028,377,7,61
+"Ryde - North",1037,410,7,66
+"Ryde - South",1059,469,8,75
+"Ashcroft - Busby - Miller",705,1,1,1
+"Austral - Greendale",995,279,5,45
+"Badgerys Creek",1095,569,10,91
+"Cecil Hills",991,257,5,41
+"Green Valley",884,46,1,8
+"Hinchinbrook",945,124,2,20
+"Hoxton Park - Carnes Hill - Horningsea Park",977,215,4,35
+"West Hoxton - Middleton Grange",1003,303,5,49
+"Cobbitty - Bringelly",1065,491,8,79
+"Gledswood Hills - Gregory Hills",1060,472,8,76
+"Leppington - Catherine Field",1035,401,7,64
+"Oran Park",1035,400,7,64
+"Bonnyrigg Heights - Bonnyrigg",843,19,1,4
+"Bossley Park - Abbotsbury",922,83,2,14
+"Cabramatta - Lansvale",737,3,1,1
+"Cabramatta West - Mount Pritchard",815,16,1,3
+"Canley Vale - Canley Heights",778,5,1,1
+"Edensor Park",898,61,1,10
+"Fairfield",721,2,1,1
+"Fairfield - West",785,7,1,2
+"Greenfield Park - Prairiewood",849,25,1,4
+"Horsley Park - Kemps Creek",1028,379,7,61
+"Smithfield - Wetherill Park",837,17,1,3
+"St Johns Park - Wakeley",874,37,1,6
+"Casula",936,108,2,18
+"Chipping Norton - Moorebank",1019,354,6,57
+"Holsworthy - Wattle Grove",1064,487,8,78
+"Lurnea - Cartwright",770,4,1,1
+"Warwick Farm",803,12,1,2
+"Edmondson Park",1047,433,7,70
+"Liverpool - East",849,24,1,4
+"Liverpool - West",795,9,1,2
+"Prestons",995,275,5,44
+"Gymea - Grays Point",1093,563,9,90
+"Miranda - Yowie Bay",1046,430,7,69
+"Sylvania - Taren Point",1065,492,8,79
+"Caringbah",1042,422,7,68
+"Caringbah South",1104,596,10,96
+"Cronulla - Kurnell - Bundeena",1077,508,9,82
+"Lilli Pilli - Port Hacking - Dolans Bay",1126,624,10,100
+"Woolooware - Burraneer",1108,604,10,97
+"Heathcote - Waterfall",1074,503,9,81
+"Illawong - Alfords Point",1094,566,10,91
+"Menai - Lucas Heights - Woronora",1090,555,9,89
+"Oyster Bay - Como - Jannali",1098,578,10,93
+"Sutherland - Kirrawee",1049,442,8,71
+"Engadine",1081,522,9,84
+"Loftus - Yarrawarrah",1097,573,10,92
+"Woronora Heights",1117,619,10,99
