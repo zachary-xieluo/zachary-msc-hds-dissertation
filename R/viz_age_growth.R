@@ -46,14 +46,14 @@ pop_all_ages <- pop_age_wslhd_comp %>%
   filter(!sa2_name_2021 %in% exclude_sa2) %>%
   group_by(sa2_name_2021, lga_name_2021) %>%
   summarise(
-    n2011_as21 = round(sum(n2011_as21, na.rm = TRUE)),  
-    n_2021     = sum(n_2021,     na.rm = TRUE),
+    pop2011_as21 = round(sum(pop2011_as21, na.rm = TRUE)),  
+    pop_2021     = sum(pop_2021,     na.rm = TRUE),
     .groups = "drop"
   ) %>%
   mutate(
     growth_rate = if_else(
-      n2011_as21 > 0,
-      (n_2021 - n2011_as21) / n2011_as21,
+      pop2011_as21 > 0,
+      (pop_2021 - pop2011_as21) / pop2011_as21,
       NA_real_
     ),
     age_band = "All ages"
@@ -77,14 +77,14 @@ pop_age_bands <- pop_age_wslhd_comp %>%
 age_growth <- pop_age_bands %>%
   group_by(sa2_name_2021, lga_name_2021, age_band) %>%
   summarise(
-    n2011_as21 = round(sum(n2011_as21, na.rm = TRUE)),
-    n_2021     = sum(n_2021,     na.rm = TRUE),
+    pop2011_as21 = round(sum(pop2011_as21, na.rm = TRUE)),
+    pop_2021     = sum(pop_2021,     na.rm = TRUE),
     .groups = "drop"
   ) %>%
   mutate(
     growth_rate = if_else(
-      n2011_as21 > 0,
-      (n_2021 - n2011_as21) / n2011_as21,
+      pop2011_as21 > 0,
+      (pop_2021 - pop2011_as21) / pop2011_as21,
       NA_real_
     )
   )
@@ -146,10 +146,10 @@ make_age_map <- function(age_band_label) {
         sa2_name_2021,
         lga_name_2021,
         age_band,
-        comma(n_2021),
-        comma(n2011_as21),
-        comma(n_2021 - n2011_as21, accuracy = 1,
-              prefix = ifelse(n_2021 - n2011_as21 > 0, "+", "")),
+        comma(pop_2021),
+        comma(pop2011_as21),
+        comma(pop_2021 - pop2011_as21, accuracy = 1,
+              prefix = ifelse(pop_2021 - pop2011_as21 > 0, "+", "")),
         percent(growth_rate, accuracy = 0.1)
       ),
       highlightOptions = highlightOptions(
