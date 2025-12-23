@@ -249,7 +249,7 @@ facet_sa2_maps <- function(
   # boundary styling
   lga_color   = "black",
   lga_size    = 0.1,
-  lhd_color   = "green",
+  lhd_color   = "#144a74",
   lhd_size    = 0.6
 ) {
   mode <- match.arg(mode)
@@ -290,14 +290,16 @@ facet_sa2_maps <- function(
       oob      = scales::squish,
       na.value = na_fill
     ) +
-    labs(title = title) +
+    labs(title = title,
+         caption = "Note: Grey areas represent non-residential zones.") +
     theme_minimal(base_size = 11) +
     theme(
       strip.text      = element_text(size = 8),
       axis.text       = element_blank(),
       axis.ticks      = element_blank(),
       panel.grid      = element_blank(),
-      legend.position = "right"
+      legend.position = "right",
+      plot.caption    = element_text(size = 8, hjust = 0)
     )
 
   # Overlays & cropping depend on mode
@@ -599,8 +601,8 @@ p_lang_prop_metro
 ```
 
 ```{r}
-p_cd_wslhd <- (p_cob_prop_wslhd | p_lang_prop_wslhd)
-
+# p_cd_wslhd <- (p_cob_prop_wslhd | p_lang_prop_wslhd)
+# 
 # ggsave("p_cd_wslhd.png", p_cd_wslhd,
 #      width = 9, height = 6, units = "in", dpi = 600, bg = "white")
 ```
@@ -624,7 +626,7 @@ p_edu_count_wslhd
 p_edu_prop_wslhd <- facet_sa2_maps(
   map_sf      = map_wslhd_2021,
   vars        = edu_prop,
-  title       = "Education",
+  title       = NULL,
   mode        = "wslhd",
   lga_sf      = lga_wslhd_2021,
   tag         = "wslhd",
@@ -747,7 +749,7 @@ p_income_count_wslhd
 p_income_prop_wslhd <- facet_sa2_maps(
   map_sf      = map_wslhd_2021,
   vars        = income_prop,
-  title       = "Personal Income — Proportions by SA2 (WSLHD, 2021)",
+  title       = NULL,
   mode        = "wslhd",
   lga_sf      = lga_wslhd_2021,
   tag         = "wslhd",
@@ -805,7 +807,7 @@ p_housing_type_count_wslhd
 p_housing_type_prop_wslhd <- facet_sa2_maps(
   map_sf      = map_wslhd_2021,
   vars        = housing_type_prop,
-  title       = "Housing Type — Proportions by SA2 (WSLHD, 2021)",
+  title       = NULL,
   mode        = "wslhd",
   lga_sf      = lga_wslhd_2021,
   tag         = "wslhd",
@@ -833,7 +835,7 @@ p_housing_type_count_metro
 p_housing_type_prop_metro <- facet_sa2_maps(
   map_sf      = map_metro_2021,
   vars        = housing_type_prop,
-  title       = "Housing Type — Proportions by SA2 (Sydney Metropolitan LHDs, 2021)",
+  title       = NULL,
   mode        = "metro",
   lga_sf      = lga_metro_clip_2021,
   lhd_sf      = lhd_metro_clip_2021,
@@ -845,6 +847,13 @@ p_housing_type_prop_metro <- facet_sa2_maps(
 )
 p_housing_type_prop_metro
 ```
+```{r}
+# p_sem_wslhd_2 <- (p_edu_prop_wslhd | p_occ_prop_wslhd) / (p_income_prop_wslhd | p_housing_type_prop_wslhd)
+# 
+# ggsave("p_sem_wslhd.png", p_sem_wslhd_2,
+#      width = 9, height = 6, units = "in", dpi = 600, bg = "white")
+```
+
 
 ```{r, echo=FALSE}
 p_disease_prop_wslhd <- facet_sa2_maps(
