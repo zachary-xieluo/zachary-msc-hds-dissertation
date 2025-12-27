@@ -1,0 +1,965 @@
+/* ================= Navbar ================= */
+
+/* Main site navbar*/
+.navbar {
+  background-color: #0f172a !important; 
+}
+
+.navbar .navbar-brand,
+.navbar .nav-link {
+  color: #f9fafb !important;            /* Text color */
+}
+
+.navbar .nav-link:hover,
+.navbar .nav-link:focus,
+.navbar .nav-link.active {
+  color: #facc15 !important;            /* Hover / active link color */
+}
+
+/* ================= narrative ================= */
+.cr-section .narrative-col .narrative{
+  display: inline-block;
+  width: fit-content; 
+  line-height: 1.25;
+  border-radius: 8px;
+  box-sizing: border-box;    
+  overflow-wrap: break-word;
+}
+
+/* ================= Opening ================= */
+
+/* Full-width hero wrapper*/
+.open-screen {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  transform: none;        
+}
+
+
+/* Opening container */
+.open-container {
+  position: relative;
+  width: 100%;
+  height: 95vh;
+  overflow: hidden;
+}
+
+/* Background image */
+.open-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+}
+
+/* Centered overlay container */
+.image-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* Title text styling */
+.open-title {
+  margin: 0;
+  font-size: 3.0rem;
+  color: #ffffff;
+  position: relative; 
+  top: -2.5rem;
+
+  /* remove underline or automatic border */
+  border-bottom: none !important;
+  text-decoration: none;
+  box-shadow: none;
+
+  /* add soft text shadow so the title stands out */
+  text-shadow: 0 4px 15px rgba(0, 0, 0, 0.55);
+}
+
+/* Scroll indicator block */
+.scroll-indicator {
+  position: absolute;
+  bottom: 2.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Scroll text */
+.scroll-text {
+  color: #ffffff;
+  font-size: 1.4rem;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.6);
+}
+
+/* Arrow icon */
+.scroll-indicator .arrow {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border-bottom: 2px solid #ffffff;
+  border-right: 2px solid #ffffff;
+  transform: rotate(45deg);
+  animation: scroll-bounce 1.6s infinite;
+}
+
+@keyframes scroll-bounce {
+  0%, 100% { transform: translateY(0) rotate(45deg); }
+  50%      { transform: translateY(8px) rotate(45deg); }
+}
+
+
+/* ================= Acknowledgement ================= */
+
+.ack-container {
+  width: 100vw;         
+  margin-left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  justify-content: center;  
+  overflow: hidden;
+}
+
+/* Background image */
+.ack-image {
+  display: block;
+  width: 100%;                
+  max-width: 1200px;    
+  height: auto;
+}
+
+/* Outer container for caption + source */
+.ack-block {
+  margin-top: 0.5rem;
+  margin-right: 1.5rem;
+}
+
+/* Image source */
+.ack-source {
+  font-size: 0.9rem;
+  color: #6b7280;   
+  margin-bottom: 0.4rem;
+}
+
+.ack-caption { 
+  font-size: 1.05rem; 
+  line-height: 1.35; 
+  color: #1f2937;
+  margin-top: 0; 
+}
+
+/* ================= Map spotinglight ================= */
+
+/* metro-map-2 */
+#cr-metro-map-2{
+  position: relative;
+  --x: 58%;
+  --y: 45%;
+  --r: 580px;
+  --feather: 120px;
+  --dim: rgba(30,41,59,.55);
+}
+
+/* metro-map-3 */
+#cr-metro-map-3{
+  --x: 63%;
+  --y: 39%;
+  --r: 220px;
+  --feather: 90px;
+  --dim: rgba(30,41,59,.55);
+}
+
+/* wslhd-map-7 */
+#cr-wslhd-map-7{
+  --x: 50%;
+  --y: 70%;
+  --r: 300px;
+  --feather: 90px;
+  --dim: rgba(30,41,59,.55);
+}
+
+#cr-metro-map-2, #cr-metro-map-3, #cr-wslhd-map-7{
+  position: relative;
+}
+
+#cr-metro-map-2 img, #cr-metro-map-3 img, #cr-wslhd-map-7 img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+#cr-metro-map-2::after, #cr-metro-map-3::after, #cr-wslhd-map-7::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background:
+    radial-gradient(
+      circle at var(--x) var(--y),
+      transparent 0,
+      transparent calc(var(--r) - var(--feather)),
+      rgba(0,0,0,.20) calc(var(--r) - var(--feather) + 1px),
+      var(--dim) var(--r)
+    );
+}
+
+/* ================= Transparent effect for barcharts ================= */
+
+/* ===============================
+   cr-wslhd-pop-2: Beam parameters (per image)
+   =============================== */
+
+/* cr-wslhd-pop-2-1 */
+
+#cr-wslhd-pop-2-1{
+
+  /* vertical beams */
+  --x1: 26%; --w1: 9%;
+  --x2: 72%; --w2: 9%;
+  --f : 2%;
+  
+  /* horizontal beams */
+  --y1: 5%;  --wy1: 5%;
+  --y2: 50%;  --wy2: 5%;
+  --y3: 99%;  --wy3: 5%;
+  --fy: 2%;
+  
+  /* outside opacity (smaller = more transparent) */
+  --alpha-out: .25;
+}
+
+/* cr-wslhd-pop-2-2 */
+
+#cr-wslhd-pop-2-2{
+
+  /* vertical beams */
+  --x1: 20%; --w1: 19%;
+  --x2: 65%; --w2: 19%;
+  --f : 2%;
+  
+  /* horizontal beams */
+  --y1: 5%;  --wy1: 5%;
+  --y2: 50%;  --wy2: 5%;
+  --y3: 99%;  --wy3: 5%;
+  --fy: 2%;
+  
+  --alpha-out: .25;
+}
+
+/* cr-wslhd-pop-2-3 */
+
+#cr-wslhd-pop-2-3{
+
+  /* vertical beams */
+  --x1: 48%; --w1: 9%;
+  --x2: 94%; --w2: 9%;
+  --f : 2%;
+  
+  /* horizontal beams */
+  --y1: 5%;  --wy1: 5%;
+  --y2: 50%;  --wy2: 5%;
+  --y3: 99%;  --wy3: 5%;
+  --fy: 2%;
+  
+  --alpha-out: .25;
+}
+
+/* ===============================
+   Shared container & computed vars
+   =============================== */
+   
+#cr-wslhd-pop-2-1,
+#cr-wslhd-pop-2-2,
+#cr-wslhd-pop-2-3{
+  position: relative;
+  display: block;
+  /* half widths/heights for math */
+  --h1:  calc(var(--w1)  / 2);
+  --h2:  calc(var(--w2)  / 2);
+  --hy1: calc(var(--wy1) / 2);
+  --hy2: calc(var(--wy2) / 2);
+  --hy3: calc(var(--wy3) / 2);
+}
+
+#cr-wslhd-pop-2-1 img,
+#cr-wslhd-pop-2-2 img,
+#cr-wslhd-pop-2-3 img{
+  width: 100%;
+  height: auto;
+  display: block;
+
+  /* Two-layer mask: vertical (left→right) + horizontal (top→bottom).
+     The union is the default; no need for mask-composite. */
+
+  /* WebKit/Safari */
+  -webkit-mask-image:
+    /* vertical layer */
+    linear-gradient(to right,
+      rgba(0,0,0,var(--alpha-out)) 0,
+      rgba(0,0,0,var(--alpha-out)) calc(var(--x1) - var(--h1) - var(--f)),
+      rgba(0,0,0,1)                 calc(var(--x1) - var(--h1)),
+      rgba(0,0,0,1)                 calc(var(--x1) + var(--h1)),
+      rgba(0,0,0,var(--alpha-out))  calc(var(--x1) + var(--h1) + var(--f)),
+      rgba(0,0,0,var(--alpha-out))  calc(var(--x2) - var(--h2) - var(--f)),
+      rgba(0,0,0,1)                 calc(var(--x2) - var(--h2)),
+      rgba(0,0,0,1)                 calc(var(--x2) + var(--h2)),
+      rgba(0,0,0,var(--alpha-out))  calc(var(--x2) + var(--h2) + var(--f)),
+      rgba(0,0,0,var(--alpha-out))  100%
+    ),
+    /* horizontal layer: y1 + y2 + y3 */
+    linear-gradient(to bottom,
+    
+      /* y1 window */
+      rgba(0,0,0,var(--alpha-out)) 0,
+      rgba(0,0,0,var(--alpha-out)) calc(var(--y1) - var(--hy1) - var(--fy)),
+      rgba(0,0,0,1)                 calc(var(--y1) - var(--hy1)),
+      rgba(0,0,0,1)                 calc(var(--y1) + var(--hy1)),
+      rgba(0,0,0,var(--alpha-out))  calc(var(--y1) + var(--hy1) + var(--fy)),
+      
+      /* y2 window */
+      rgba(0,0,0,var(--alpha-out))  calc(var(--y2) - var(--hy2) - var(--fy)),
+      rgba(0,0,0,1)                 calc(var(--y2) - var(--hy2)),
+      rgba(0,0,0,1)                 calc(var(--y2) + var(--hy2)),
+      rgba(0,0,0,var(--alpha-out))  calc(var(--y2) + var(--hy2) + var(--fy)),
+      
+      /* y3 window*/
+      rgba(0,0,0,var(--alpha-out))  calc(var(--y3) - var(--hy3) - var(--fy3, var(--fy))),
+      rgba(0,0,0,1)                 calc(var(--y3) - var(--hy3)),
+      rgba(0,0,0,1)                 calc(var(--y3) + var(--hy3)),
+      rgba(0,0,0,var(--alpha-out))  calc(var(--y3) + var(--hy3) + var(--fy3, var(--fy))),
+      rgba(0,0,0,var(--alpha-out))  100%
+    );
+
+  /* Standard */
+  mask-image:
+    linear-gradient(to right,
+      rgba(0,0,0,var(--alpha-out)) 0,
+      rgba(0,0,0,var(--alpha-out)) calc(var(--x1) - var(--h1) - var(--f)),
+      rgba(0,0,0,1)                 calc(var(--x1) - var(--h1)),
+      rgba(0,0,0,1)                 calc(var(--x1) + var(--h1)),
+      rgba(0,0,0,var(--alpha-out))  calc(var(--x1) + var(--h1) + var(--f)),
+      rgba(0,0,0,var(--alpha-out))  calc(var(--x2) - var(--h2) - var(--f)),
+      rgba(0,0,0,1)                 calc(var(--x2) - var(--h2)),
+      rgba(0,0,0,1)                 calc(var(--x2) + var(--h2)),
+      rgba(0,0,0,var(--alpha-out))  calc(var(--x2) + var(--h2) + var(--f)),
+      rgba(0,0,0,var(--alpha-out))  100%
+    ),
+    linear-gradient(to bottom,
+    
+      /* y1 window */
+      rgba(0,0,0,var(--alpha-out)) 0,
+      rgba(0,0,0,var(--alpha-out)) calc(var(--y1) - var(--hy1) - var(--fy)),
+      rgba(0,0,0,1)                 calc(var(--y1) - var(--hy1)),
+      rgba(0,0,0,1)                 calc(var(--y1) + var(--hy1)),
+      rgba(0,0,0,var(--alpha-out))  calc(var(--y1) + var(--hy1) + var(--fy)),
+      
+      /* y2 window */
+      rgba(0,0,0,var(--alpha-out))  calc(var(--y2) - var(--hy2) - var(--fy)),
+      rgba(0,0,0,1)                 calc(var(--y2) - var(--hy2)),
+      rgba(0,0,0,1)                 calc(var(--y2) + var(--hy2)),
+      rgba(0,0,0,var(--alpha-out))  calc(var(--y2) + var(--hy2) + var(--fy)),
+      
+      /* y3 window*/
+      rgba(0,0,0,var(--alpha-out))  calc(var(--y3) - var(--hy3) - var(--fy3, var(--fy))),
+      rgba(0,0,0,1)                 calc(var(--y3) - var(--hy3)),
+      rgba(0,0,0,1)                 calc(var(--y3) + var(--hy3)),
+      rgba(0,0,0,var(--alpha-out))  calc(var(--y3) + var(--hy3) + var(--fy3, var(--fy))),
+      rgba(0,0,0,var(--alpha-out))  100%
+    );
+}
+
+
+/* ensure any old ::after overlays are disabled */
+#cr-wslhd-pop-2-1::after,
+#cr-wslhd-pop-2-2::after,
+#cr-wslhd-pop-2-3::after{
+  background: none !important;
+  content: none;
+}
+
+/* ================================
+   cr-wslhd-cd-2-1, cr-wslhd-cd-2-2
+   ================================ */
+
+/* Container: shared spotlight logic */
+#cr-wslhd-cd-2-1,
+#cr-wslhd-cd-2-2 {
+  position: relative;
+  display: block;
+
+  /* Outside opacity (smaller = more transparent) */
+  --alpha-out: .25;
+
+  /* Half-height for math */
+  --hy: calc(var(--wy) / 2);
+}
+
+/* Beam settings*/
+#cr-wslhd-cd-2-1 {
+  --y: 0%; 
+  --wy: 95%;
+  --fy: 2%;
+}
+
+#cr-wslhd-cd-2-2 {
+  --y: 80%;  
+  --wy: 60%;
+  --fy: 2%;  
+}
+
+
+/* Base image: shared mask gradient */
+#cr-wslhd-cd-2-1 img,
+#cr-wslhd-cd-2-2 img {
+  width: 100%;
+  height: auto;
+  display: block;
+
+  /* WebKit/Safari */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    rgba(0,0,0,var(--alpha-out)) 0,
+    rgba(0,0,0,var(--alpha-out)) calc(var(--y) - var(--hy) - var(--fy)),
+    rgba(0,0,0,1)                 calc(var(--y) - var(--hy)),
+    rgba(0,0,0,1)                 calc(var(--y) + var(--hy)),
+    rgba(0,0,0,var(--alpha-out))  calc(var(--y) + var(--hy) + var(--fy)),
+    rgba(0,0,0,var(--alpha-out))  100%
+  );
+
+  /* Standard */
+  mask-image: linear-gradient(
+    to bottom,
+    rgba(0,0,0,var(--alpha-out)) 0,
+    rgba(0,0,0,var(--alpha-out)) calc(var(--y) - var(--hy) - var(--fy)),
+    rgba(0,0,0,1)                 calc(var(--y) - var(--hy)),
+    rgba(0,0,0,1)                 calc(var(--y) + var(--hy)),
+    rgba(0,0,0,var(--alpha-out))  calc(var(--y) + var(--hy) + var(--fy)),
+    rgba(0,0,0,var(--alpha-out))  100%
+  );
+}
+
+/* Brighten inside the beam */
+#cr-wslhd-cd-2-1::before,
+#cr-wslhd-cd-2-2::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  mix-blend-mode: screen;
+  --boost: .18; /* 0–0.35 typical */
+
+  background: linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent                         calc(var(--y) - var(--hy) - var(--fy)),
+    rgba(255,255,255,var(--boost))      calc(var(--y) - var(--hy)),
+    rgba(255,255,255,var(--boost))      calc(var(--y) + var(--hy)),
+    transparent                         calc(var(--y) + var(--hy) + var(--fy)),
+    transparent 100%
+  );
+}
+
+/* Ensure any old ::after overlays are off */
+#cr-wslhd-cd-2-1::after,
+#cr-wslhd-cd-2-2::after {
+  background: none !important;
+  content: none;
+}
+
+
+/* #cr-metro-healcons-1-2*/
+#cr-metro-healcons-1-2{ 
+  position: relative; display:block;
+
+  /* Beam 1  */
+  --y: 0%;
+  --wy: 57%;
+  --fy: 2%;
+
+  /* Beam 2 */
+  --y2: 100%;     /* center (0–100%) */
+  --wy2: 20%;    /* height (%) */
+  --fy2: 2%;     /* feather (%) — 0% = hard edge */
+
+  /* Outside opacity (smaller = more transparent) */
+  --alpha-out: .25;
+
+  /* Half-heights for math */
+  --hy:  calc(var(--wy)  / 2);
+  --hy2: calc(var(--wy2) / 2);
+}
+
+/* Base image */
+#cr-metro-healcons-1-2 img{
+  width:100%; height:auto; display:block;
+
+  /* WebKit/Safari */
+  -webkit-mask-image: linear-gradient(to bottom,
+    /* === Beam 1 === */
+    rgba(0,0,0,var(--alpha-out)) 0,
+    rgba(0,0,0,var(--alpha-out)) calc(var(--y) - var(--hy) - var(--fy)),
+    rgba(0,0,0,1)                 calc(var(--y) - var(--hy)),
+    rgba(0,0,0,1)                 calc(var(--y) + var(--hy)),
+    rgba(0,0,0,var(--alpha-out))  calc(var(--y) + var(--hy) + var(--fy)),
+
+    /* === Beam 2 === */
+    rgba(0,0,0,var(--alpha-out))  calc(var(--y2) - var(--hy2) - var(--fy2)),
+    rgba(0,0,0,1)                 calc(var(--y2) - var(--hy2)),
+    rgba(0,0,0,1)                 calc(var(--y2) + var(--hy2)),
+    rgba(0,0,0,var(--alpha-out))  calc(var(--y2) + var(--hy2) + var(--fy2)),
+
+    rgba(0,0,0,var(--alpha-out))  100%
+  );
+
+  /* Standard */
+  mask-image: linear-gradient(to bottom,
+    /* === Beam 1 === */
+    rgba(0,0,0,var(--alpha-out)) 0,
+    rgba(0,0,0,var(--alpha-out)) calc(var(--y) - var(--hy) - var(--fy)),
+    rgba(0,0,0,1)                 calc(var(--y) - var(--hy)),
+    rgba(0,0,0,1)                 calc(var(--y) + var(--hy)),
+    rgba(0,0,0,var(--alpha-out))  calc(var(--y) + var(--hy) + var(--fy)),
+
+    /* === Beam 2 === */
+    rgba(0,0,0,var(--alpha-out))  calc(var(--y2) - var(--hy2) - var(--fy2)),
+    rgba(0,0,0,1)                 calc(var(--y2) - var(--hy2)),
+    rgba(0,0,0,1)                 calc(var(--y2) + var(--hy2)),
+    rgba(0,0,0,var(--alpha-out))  calc(var(--y2) + var(--hy2) + var(--fy2)),
+
+    rgba(0,0,0,var(--alpha-out))  100%
+  );
+}
+
+/* brighten inside both beams */
+#cr-metro-healcons-1-2::before{
+  content:""; position:absolute; inset:0; pointer-events:none; z-index:1;
+  mix-blend-mode: screen;
+  --boost: .18; /* 0–0.35 typical */
+  background: linear-gradient(to bottom,
+    /* Beam 1 brighten */
+    transparent 0,
+    transparent calc(var(--y) - var(--hy) - var(--fy)),
+    rgba(255,255,255,var(--boost)) calc(var(--y) - var(--hy)),
+    rgba(255,255,255,var(--boost)) calc(var(--y) + var(--hy)),
+    transparent calc(var(--y) + var(--hy) + var(--fy)),
+
+    /* Beam 2 brighten */
+    transparent calc(var(--y2) - var(--hy2) - var(--fy2)),
+    rgba(255,255,255,var(--boost)) calc(var(--y2) - var(--hy2)),
+    rgba(255,255,255,var(--boost)) calc(var(--y2) + var(--hy2)),
+    transparent calc(var(--y2) + var(--hy2) + var(--fy2)),
+
+    transparent 100%
+  );
+}
+
+/* Ensure any old ::after overlays are off */
+#cr-metro-healcons-1-2::after{ background:none !important; content:none; }
+
+
+/* #cr-metro-healcons-1-3 and cr-metro-healcons-2*/
+#cr-metro-healcons-1-3,
+#cr-metro-healcons-2{
+  position: relative; display:block;
+
+  /* Beam 1 */
+  --y: 0%;      /* center (0–100%) */
+  --wy: 75%;     /* height (%) */
+  --fy: 2%;      /* feather (%) — 0% = hard edge */
+
+  /* Beam 2 */
+  --y2: 100%;     /* center (0–100%) */
+  --wy2: 20%;    /* height (%) */
+  --fy2: 2%;     /* feather (%) */
+
+  /* Outside opacity (smaller = more transparent) */
+  --alpha-out: .25;
+
+  /* computed half-heights */
+  --hy:  calc(var(--wy)  / 2);
+  --hy2: calc(var(--wy2) / 2);
+}
+
+/* Base image */
+#cr-metro-healcons-1-3 img,
+#cr-metro-healcons-2 img{
+  width:100%; height:auto; display:block;
+
+  /* WebKit/Safari */
+  -webkit-mask-image: linear-gradient(to bottom,
+    /* === Beam 1 === */
+    rgba(0,0,0,var(--alpha-out)) 0,
+    rgba(0,0,0,var(--alpha-out)) calc(var(--y) - var(--hy) - var(--fy)),
+    rgba(0,0,0,1)                 calc(var(--y) - var(--hy)),
+    rgba(0,0,0,1)                 calc(var(--y) + var(--hy)),
+    rgba(0,0,0,var(--alpha-out))  calc(var(--y) + var(--hy) + var(--fy)),
+
+    /* === Beam 2 === */
+    rgba(0,0,0,var(--alpha-out))  calc(var(--y2) - var(--hy2) - var(--fy2)),
+    rgba(0,0,0,1)                 calc(var(--y2) - var(--hy2)),
+    rgba(0,0,0,1)                 calc(var(--y2) + var(--hy2)),
+    rgba(0,0,0,var(--alpha-out))  calc(var(--y2) + var(--hy2) + var(--fy2)),
+
+    rgba(0,0,0,var(--alpha-out))  100%
+  );
+
+  /* Standard */
+  mask-image: linear-gradient(to bottom,
+    /* === Beam 1 === */
+    rgba(0,0,0,var(--alpha-out)) 0,
+    rgba(0,0,0,var(--alpha-out)) calc(var(--y) - var(--hy) - var(--fy)),
+    rgba(0,0,0,1)                 calc(var(--y) - var(--hy)),
+    rgba(0,0,0,1)                 calc(var(--y) + var(--hy)),
+    rgba(0,0,0,var(--alpha-out))  calc(var(--y) + var(--hy) + var(--fy)),
+
+    /* === Beam 2 === */
+    rgba(0,0,0,var(--alpha-out))  calc(var(--y2) - var(--hy2) - var(--fy2)),
+    rgba(0,0,0,1)                 calc(var(--y2) - var(--hy2)),
+    rgba(0,0,0,1)                 calc(var(--y2) + var(--hy2)),
+    rgba(0,0,0,var(--alpha-out))  calc(var(--y2) + var(--hy2) + var(--fy2)),
+
+    rgba(0,0,0,var(--alpha-out))  100%
+  );
+}
+
+/* brighten inside both beams */
+#cr-metro-healcons-1-3::before,
+#cr-metro-healcons-2::before{
+  content:""; position:absolute; inset:0; pointer-events:none; z-index:1;
+  mix-blend-mode: screen;
+  --boost: .18; /* 0–0.35 typical */
+  background: linear-gradient(to bottom,
+    /* Beam 1 brighten */
+    transparent 0,
+    transparent calc(var(--y) - var(--hy) - var(--fy)),
+    rgba(255,255,255,var(--boost)) calc(var(--y) - var(--hy)),
+    rgba(255,255,255,var(--boost)) calc(var(--y) + var(--hy)),
+    transparent calc(var(--y) + var(--hy) + var(--fy)),
+
+    /* Beam 2 brighten */
+    transparent calc(var(--y2) - var(--hy2) - var(--fy2)),
+    rgba(255,255,255,var(--boost)) calc(var(--y2) - var(--hy2)),
+    rgba(255,255,255,var(--boost)) calc(var(--y2) + var(--hy2)),
+    transparent calc(var(--y2) + var(--hy2) + var(--fy2)),
+
+    transparent 100%
+  );
+}
+
+/* Kill any legacy ::after overlays for this ID */
+#cr-metro-healcons-1-3::after,
+#cr-metro-healcons-2::after{ background:none !important; content:none; }
+
+
+/* ======================= Summary layout  ========================== */
+/* —— Summary layout —— */
+.edge-to-edge{
+  position: relative;
+  left: 50%; right: 50%;
+  margin-left: -50vw; margin-right: -50vw;
+  width: 100vw;
+  overflow-x: clip; 
+}
+
+
+/* --- Panel container --- */
+.sum-panel{
+  background:rgba(15, 23, 42, 0.9);                 
+  color:#0f172a;                  
+  border:2px solid #e5e7eb;
+  border-radius:18px;
+  padding:12vh 5vw;
+  max-width:1600px;
+  margin:0 auto;
+  box-shadow:none;
+}
+
+
+
+/* --- Four-column grid (no per-column card background) --- */
+.sum-wrap{
+  display:grid;
+  grid-template-columns:repeat(4, minmax(0,1fr));
+  gap:16px;                           
+}
+
+/* --- Column spacing; define a shared horizontal inset variable --- */
+.sum-col{
+  --card-pad-x: 12px;                 /* single source of truth for left/right insets */
+  padding:12px 8px;
+  border-right:none !important;
+}
+.sum-col:not(:last-child){ border-right:none !important; }
+
+/* --- Tag-style title card (rounded, no shadow) --- */
+.sum-col h3{
+  position: relative;
+  left: 10px;    
+  display:flex;                       /* full-width tag */
+  width:95%;
+  align-items:center;
+  gap:6px;
+  margin:0 0 16px;
+  padding:13px var(--card-pad-x);     /* align with sum text & dashed line */
+  font-size:1.2rem;
+  line-height:1.5;
+  color:#0f172a;                      /* primary text color on light tag */
+  background:#f9f7f7;                 /* light badge against dark panel */
+  border:1px solid #d7e3f6;
+  border-radius:10px;
+}
+.sum-col h3:hover{
+  background:#e0f2ff;
+  border-color:#c8d8f3;
+}
+
+/* Icon inside the tag follows currentColor */
+.sum-ico{
+  width:20px; height:20px;
+  stroke-width:2;
+  margin:0;
+  vertical-align:-2px;
+  color:currentColor;
+}
+
+/* =========================
+   sum row (value + note)
+   ========================= */
+
+/* Tunables */
+:root{
+  --sum-v-row: 1.6rem;   /* fixed height for the value row (keeps .n start aligned) */
+  --sum-sep-gap: 10px;   /* distance from .n bottom to dashed line (overridable by JS) */
+  --sum-row-gap: 14px;   /* distance between dashed line and next sum row */
+}
+
+.sum{
+  position:relative;
+  display:grid;
+  grid-template-columns:1fr;
+  grid-template-areas:
+    "v"
+    "n";
+  grid-template-rows: var(--sum-v-row) auto;  /* lock .v row height */
+  row-gap:4px;                                /* vertical spacing between v and n */
+  padding:10px var(--card-pad-x) var(--sum-sep-gap); /* align text with tag & control dashed gap */
+}
+
+/* Bottom dashed separator aligns to the same inset as text */
+.sum::after{
+  content:"";
+  position:absolute;
+  left:var(--card-pad-x); right:var(--card-pad-x); bottom:0;
+  border-top:1px dashed #e5e7eb;
+}
+.sum:last-child::after{ content:none; }
+
+/* Space between sum rows (separator to next row) */
+.sum + .sum{ margin-top: var(--sum-row-gap); }
+
+/* Value & Note on dark panel: use light colors for legibility */
+.sum .v{
+  grid-area:v;
+  font-weight:700;
+  letter-spacing:-0.01em;
+  line-height:1;                        /* prevent inflating .v row */
+  display:flex; align-items:flex-start;
+  white-space:nowrap;
+  color:#f9f7f7;                        /* light value on dark panel */
+}
+.sum .n{
+  grid-area:n;
+  color:#eaf6f6;                       
+  font-size:1.0rem;
+  align-self:start; margin-top:0; line-height:1.2;  
+}
+
+/* Optional inline split inside .v (bold number, normal trailing text) */
+.sum .v .val{ font-weight:700; }
+.sum .v .sub{ font-weight:400; font-size:.9em; color:#dbe4f4; margin-left:6px; }
+
+/* Value size variants (v-mid between default and v-lg; v-sm smaller than both) */
+.sum .v.v-lg  { font-size: clamp(1.25rem, 1.6vw + .20rem, 1.40rem);}
+.sum .v.v-mid { font-size: clamp(1.00rem, 1.0vw + .15rem, 1.00rem);}
+.sum .v.v-sm  { font-size: clamp(0.82rem, 0.90vw + .10rem, 0.8rem);} 
+
+/* Default size when no variant is applied */
+.sum .v:not(.v-lg):not(.v-mid):not(.v-sm){
+  font-size: clamp(1.05rem, 1.20vw + .15rem, 1.30rem);}
+
+
+/* =========================
+   Responsive (4 → 3 → 2 → 1)
+   ========================= */
+   
+@media (max-width:1280px){
+  .sum-wrap{ grid-template-columns:repeat(3, minmax(0,1fr)); }
+}
+
+@media (max-width:960px){
+  .sum-panel{ padding:8vh 4vw; }
+  .sum-wrap{ grid-template-columns:repeat(2, minmax(0,1fr)); }
+  .sum-col{ padding:0 6px; }
+}
+
+
+@media (max-width:640px){
+  .sum-panel{ padding:5vh 4vw; }
+  .sum-wrap{ grid-template-columns:1fr; }
+  .sum-col{ padding:0 4px; }
+  .sum-col + .sum-col{
+    border-top:1px solid #e5e7eb;
+    padding-top:12px;
+    margin-top:8px;
+  }
+}
+
+
+/* Appendix panel box */
+.appendix-panel {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;   
+  padding: 1.2rem 1.5rem;
+  margin-top: 1.5rem;
+  
+  margin-left: -6.0rem;
+  margin-right: -6.0rem;
+  
+  background: #f9fafb;
+  color: #4b5563; 
+  font-size: 1.0rem;
+  line-height: 1.25;
+}
+
+.appendix-panel .appendix-divider {
+  width: 40%;             
+  height: 1px;
+  background: #e5e7eb;    
+  margin: -0.3rem 0 1.5rem;
+  opacity: 0.8; 
+}
+
+.appendix-panel .appendix-subtitle {
+  display: block;
+  margin-top: 0;
+  margin-bottom: -0.3rem;
+  font-size: 1.2rem;
+  line-height: 1.0;
+  color: #374151;
+}
+
+/* ================= Dashboard top header (Interactive Maps bar) ================= */
+
+/* Header background: light, with a subtle bottom border */
+#quarto-dashboard-header .navbar {
+  background-color: #f9fafb !important;          /* Very light grey (almost white) */
+  border-bottom: 1px solid #e5e7eb !important;   /* Soft separator line */
+}
+
+/* ---------- FORCE DASHBOARD TITLE TO DARK TEXT ---------- */
+/* Left title "Interactive Maps" – cover several possible class patterns */
+#quarto-dashboard-header .navbar-brand,
+#quarto-dashboard-header .navbar-brand *,
+#quarto-dashboard-header .navbar-title,
+#quarto-dashboard-header .navbar-title *,
+#quarto-dashboard-header .quarto-dashboard-title,
+#quarto-dashboard-header .quarto-dashboard-title * {
+  color: #111827 !important;   /* Dark grey for good contrast on light background */
+}
+
+/* Right side page tabs: base (unselected) text color */
+#quarto-dashboard-header .navbar-nav .nav-link {
+  color: #111827 !important;   /* Dark text for tabs as well */
+}
+
+/* Hover style for header tabs (on light background) */
+#quarto-dashboard-header .navbar-nav .nav-link:hover,
+#quarto-dashboard-header .navbar-nav .nav-link:focus {
+  background-color: #ffffff !important;     /* Very light teal tint on hover */
+  border: 1px solid #0f172a !important;     /* Green accent border */
+  border-radius: 20px;
+  color: #0f172a !important;                /* Darker teal text on hover */
+  padding-inline: 0.8rem;
+}
+
+/* Align header page tabs to the right: flex container + brand + nav */
+#quarto-dashboard-header .navbar .navbar-collapse {
+  display: flex !important;
+  justify-content: flex-end !important;     /* Right-align contents inside collapse */
+}
+
+/* Keep the brand on the left and push nav items to the right */
+#quarto-dashboard-header .navbar .navbar-brand {
+  margin-right: auto !important;
+}
+
+/* Ensure navbar-nav itself is not adding centering margins */
+#quarto-dashboard-header .navbar-nav {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  justify-content: flex-end !important;     /* Push items to the right inside <ul> */
+}
+
+/* Active page tab: light pill with green border */
+#quarto-dashboard-header .navbar-nav .nav-link.active,
+#quarto-dashboard-header .navbar-nav .nav-item.show .nav-link,
+#quarto-dashboard-header .navbar-nav .nav-link[aria-current="page"] {
+  background-color: #0f172a !important;     /* Light teal pill */
+  border: 1px solid #0f172a !important;     /* Green accent border */
+  border-radius: 20px;
+  color: #ffffff !important;                /* Dark teal text */
+  padding-inline: 0.75rem;
+}
+
+/* ================== Tabset inside dashboard content ================== */
+
+.tabset .nav.nav-tabs {
+  display: flex;
+  justify-content: flex-end !important;       /* Right-align the tab labels */
+  border-bottom-color: #e5e7eb !important;    /* Bottom border color of tab row */
+}
+
+/* Default (unselected) tab text color */
+.tabset .nav.nav-tabs .nav-link {
+  color: #ffffff !important;
+  border-radius: 10px;
+}
+
+/* Active tab background & border color (content tabset) */
+.tabset .nav.nav-tabs .nav-link.active,
+.tabset .nav.nav-tabs .nav-item.show .nav-link,
+.tabset .nav.nav-tabs .nav-link[aria-selected="true"] {
+  background-color: #0f172a !important;
+  border-color:  #ffffff !important;
+  border-radius: 10px;
+  color: #ffffff !important;
+}
+
+/* ================= Dashboard chart card header styling ================= */
+
+/* Card header background & text color */
+body.quarto-dashboard .card-header,
+#quarto-dashboard .card-header {
+  background-color: #0f172a !important;   /* Card header background color */
+  color: #ffffff !important;             /* Card header text color */
+  border-bottom: 1px solid #0f172a !important;  /* Match header border to background */
+}
+
+/* Card header title text (some themes use .card-title) */
+body.quarto-dashboard .card-header .card-title,
+#quarto-dashboard .card-header .card-title {
+  color: #ffffff !important;
+  font-weight: 600;                      /* Slightly bolder for emphasis */
+  margin-bottom: 0;                      /* Remove extra bottom margin */
+}
+

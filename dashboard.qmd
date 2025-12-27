@@ -1,0 +1,81 @@
+---
+title: "Dashboard"
+format:
+  dashboard:
+    scrolling: true
+    css: assets/styles.css
+---
+
+# Popualtion Growth 
+
+## Row {.tabset}
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#| title: All Ages
+source("R/viz_age_growth.R", local = knitr::knit_global())
+map_all_ages
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#| title: 0-19
+source("R/viz_age_growth.R", local = knitr::knit_global())
+map_age_child
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#| title: 20-39
+source("R/viz_age_growth.R", local = knitr::knit_global())
+map_age_young
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#| title: 40-59
+source("R/viz_age_growth.R", local = knitr::knit_global())
+map_age_mid
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#| title: 60+
+source("R/viz_age_growth.R", local = knitr::knit_global())
+map_age_older
+```
+
+# Cultural Diversity
+
+## Column {orientation="columns"}
+
+### Column {width=50%}
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#| title: Country of Birth, 2021 Census
+source("R/viz_culture.R", local = knitr::knit_global())
+map_birth
+```
+
+### Column {width=50%}
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#| title: Language Used at Home, 2021 Census
+source("R/viz_culture.R", local = knitr::knit_global())
+map_lang
+```
+
+# Socioeconomics and Health
+
+## Column {orientation="columns"}
+
+### Column {width=50%}
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#| title: Socioeconomic Disadvantage and Health Burden by SA2
+source("R/viz_sem_health.R", local = knitr::knit_global())
+map_widget
+```
+
+### Column {width=50%}
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#| title: Socioeconomic Disadvantage and Health Burden by SA2
+source("R/viz_sem_health.R", local = knitr::knit_global())
+scatter_widget
+```
