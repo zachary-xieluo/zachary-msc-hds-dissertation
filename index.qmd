@@ -1,4 +1,5 @@
 ---
+pagetitle: People and Communities in Western Sydney
 format:
   closeread-html:
     remove-header-space: true 
@@ -17,10 +18,8 @@ cr-style:
   narrative-overlay-min-width: "300px"
   narrative-sidebar-width: "700px"
   narrative-font-size: 1.4rem
-  
 title-block-banner: false
 ---
-
 
 
 :::::::::::{.open-screen}
@@ -757,11 +756,11 @@ I combined two measures:
 
 <br>
 
--   **Deprivation Percentile**: Computed from Index of Relative Socioeconomic Disadvantage [(IRSD)](https://www.abs.gov.au/statistics/people/people-and-communities/socio-economic-indexes-areas-seifa-australia/latest-release#index-of-relative-socio-economic-disadvantage-irsd-) from ABS. (see calculation)
+-   **Deprivation Percentile**: Computed from Index of Relative Socioeconomic Disadvantage [(IRSD)](https://www.abs.gov.au/statistics/people/people-and-communities/socio-economic-indexes-areas-seifa-australia/latest-release#index-of-relative-socio-economic-disadvantage-irsd-) from ABS [(check calculation)](https://github.com/zachary-xieluo/zachary-msc-hds-dissertation/blob/analysis/analysis/4_eda/4_sem_health/eda_sem_health.Rmd#L845).
 
 <br>
 
--   **Health-burden Percentile**: Computed from the proportions of four key health conditions. (see calculation)
+-   **Health-burden Percentile**: Computed from the proportions of four key health conditions [(check calculation)](https://github.com/zachary-xieluo/zachary-msc-hds-dissertation/blob/analysis/analysis/4_eda/4_sem_health/eda_sem_health.Rmd#L801-L817).
 
 :::
 
@@ -903,7 +902,7 @@ viz_sem_health
 
 :::::::::::{.cr-section layout="sidebar-right"}
 
-Looking ahead, WSLHD’s population is forecast to reach about 1.47 million by 2031, while growth in the healthcare workforce is likely to be much slower. @cr-ending
+Looking ahead, WSLHD’s population is projected to grow by nearly 30% over the decade to 2031, whereas healthcare workforce growth has been considerably slower, at less than half the rate of population growth. @cr-ending
 
 ::: {focus-on="cr-ending"}
 
@@ -973,15 +972,9 @@ This scrollytelling article was developed by [Zahcary Xie](https://zachary-xielu
 
 The project was supervised by
 
-- Dr Claire Deakin (School of Population Health, Faculty of Medicine and Health, UNSW Sydney and Research and Education Network Western Sydney Local Health District, Sydney)
-
 - Dr Mark Hanly (Centre for Big Data Research in Health, Faculty of Medicine and Health, UNSW Sydney)
+
+- Dr Claire Deakin (School of Population Health, Faculty of Medicine and Health, UNSW Sydney and Research and Education Network Western Sydney Local Health District, Sydney)
 :::
 
 <br>
-<br>
-<br>
-
-:::{style="font-size:1.0rem; line-height:1.0; margin:0 auto;"}
-*[Technical Paper](TBD)* | *[Repo](TBD)*
-:::

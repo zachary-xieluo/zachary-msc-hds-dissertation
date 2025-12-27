@@ -1,7 +1,7 @@
 project:
   type: website
   output-dir: docs
-    
+
 website:
   title: "People and Communities in Western Sydney"
   back-to-top-navigation: true
@@ -15,6 +15,9 @@ website:
       - text: "Dashboard"
         href: dashboard.qmd
         icon: speedometer
+      - text: "Technical Paper"
+        href: paper.qmd
+        icon: file-text
     right:
       - icon: linkedin
         href: https://www.linkedin.com/in/zachary-xie/
@@ -25,7 +28,5 @@ website:
         aria-label: GitHub
         target: _blank
         
-
-format:
-  html:
-    relative-resources: true
+  page-footer:
+    center: © Zachary Xie 2025

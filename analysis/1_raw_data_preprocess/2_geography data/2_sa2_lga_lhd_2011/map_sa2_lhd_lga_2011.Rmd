@@ -1,0 +1,117 @@
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# --- Load libraries ---
+library(dplyr)
+library(tidyr)
+library(sf)
+library(strayr)
+library(here)
+
+
+# --- Read geometries (NSW only) ---
+# Local Health Districts (NSW)
+lhd <- strayr::read_absmap("nsw_lhd2023")
+
+# Local Government Areas (2011, NSW)
+lga <- strayr::read_absmap("lga2011") |>
+  dplyr::filter(state_name_2011 == "New South Wales")
+
+# Statistical Areas Level 2 (2011, NSW)
+sa2 <- strayr::read_absmap("sa22011") |>
+  dplyr::filter(state_name_2011 == "New South Wales")
+
+# Turn off spherical geometry to simplify planar area calcs
+sf_use_s2(FALSE)
+
+# --- Step 1. Map SA2 -> LGA (by max area overlap) ---
+
+# Ensure same CRS
+sa2 <- st_transform(sa2, st_crs(lga))
+
+# Intersections
+overlapsLGA <- st_intersection(sa2, lga)
+
+# Calculate overlap areas
+overlapsLGA$overlap_area <- st_area(overlapsLGA)
+
+# Keep the LGA with the largest overlap for each SA2
+sa2_to_lga <- overlapsLGA |>
+  group_by(sa2_code_2011) |>
+  slice_max(overlap_area, n = 1, with_ties = FALSE) |>
+  ungroup() |>
+  st_drop_geometry() |>
+  transmute(
+    sa2_code_2011,
+    sa2_name_2011,
+    lga_code_2011,
+    lga_name_2011
+  ) |>
+  arrange(sa2_code_2011)
+
+# --- Step 2. Map SA2 -> LHD (by max area overlap) ---
+
+# Make LHD valid and align CRS
+lhd <- st_make_valid(lhd)
+sa2 <- st_transform(sa2, st_crs(lhd))
+
+# Intersections
+overlapsLHD <- st_intersection(sa2, lhd)
+
+# Calculate overlap areas
+overlapsLHD$overlap_area <- st_area(overlapsLHD)
+
+# Keep the LHD with the largest overlap for each SA2
+sa2_to_lhd <- overlapsLHD |>
+  group_by(sa2_code_2011) |>
+  slice_max(overlap_area, n = 1, with_ties = FALSE) |>
+  ungroup() |>
+  st_drop_geometry() |>
+  transmute(
+    sa2_code_2011,
+    nsw_lhd_name
+  ) |>
+  arrange(sa2_code_2011)
+
+# --- Step 3. Merge SA2->LGA and SA2->LHD ---
+
+sa2_lga_lhd_df <- sa2_to_lga |>
+  left_join(sa2_to_lhd, by = "sa2_code_2011") |>
+  arrange(sa2_code_2011)
+
+# --- Optional sanity checks ---
+stopifnot(!anyDuplicated(sa2_lga_lhd_df$sa2_code_2011))
+stopifnot(!any(sapply(sa2_lga_lhd_df, inherits, "sfc")))
+
+# --- Save output ---
+# write.csv(sa2_lga_lhd_df, "sa2_lga_lhd_nsw_2011.csv", row.names = FALSE)
+```
+
+```{r}
+# Filter WSLHD
+sa2_lga_wslhd_2011 <- sa2_lga_lhd_df |>
+  filter(nsw_lhd_name == "Western Sydney")
+
+# Read all sa2s that wslhd covers
+wslhd_sa2 <- read.csv("wslhd_sa2_2011.csv") %>%
+  rename(sa2_name_2011 = sa2)
+
+# Identify SA2s missing in sa2_lga_wslhd_2011 
+missing_sa2 <- wslhd_sa2 %>%
+  anti_join(sa2_lga_wslhd_2011, by = "sa2_name_2011")
+
+# Extract full rows for the missing SA2s
+rows_to_add <- sa2_lga_lhd_df %>%
+  semi_join(missing_sa2, by = "sa2_name_2011")
+
+# Append the missing SA2 rows
+sa2_lga_wslhd_2011 <- sa2_lga_wslhd_2011 %>%
+  bind_rows(rows_to_add) %>%
+  distinct(sa2_name_2011, .keep_all = TRUE) 
+
+# write.csv(sa2_lga_wslhd_2011, "sa2_lga_wslhd_2011.csv", row.names = FALSE)
+```
+

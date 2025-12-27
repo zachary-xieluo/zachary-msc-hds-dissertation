@@ -1,0 +1,130 @@
+```{r}
+library(dplyr)
+library(readr)
+library(tidyr)
+library(stringr)
+library(scales)
+```
+
+```{r}
+# Read ABS correspondence tables
+corr_11_16 <- read_csv("CG_SA2_2011_SA2_2016.csv")
+corr_16_21 <- read_csv("CG_SA2_2016_SA2_2021.csv")
+
+# ============================================================
+# Standardise columns and extract weights
+
+# 2011 → 2016 correspondence with ratio or percentage weights
+c11_16 <- corr_11_16 %>%
+  transmute(
+    sa2_code_2011 = SA2_MAINCODE_2011,
+    sa2_name_2011 = str_squish(SA2_NAME_2011),
+    sa2_code_2016 = SA2_MAINCODE_2016,
+    sa2_name_2016 = str_squish(SA2_NAME_2016),
+    w_11_16 = ifelse(!is.na(RATIO), RATIO, PERCENTAGE / 100)
+  ) %>%
+  mutate(w_11_16 = pmin(pmax(w_11_16, 0), 1))
+
+# 2016 → 2021 correspondence with ratio weights
+c16_21 <- corr_16_21 %>%
+  transmute(
+    sa2_code_2016 = SA2_MAINCODE_2016,
+    sa2_name_2016 = str_squish(SA2_NAME_2016),
+    sa2_code_2021 = SA2_CODE_2021,
+    sa2_name_2021 = str_squish(SA2_NAME_2021),
+    w_16_21 = RATIO_FROM_TO
+  ) %>%
+  mutate(w_16_21 = pmin(pmax(w_16_21, 0), 1))
+
+# ============================================================
+# Create chained correspondence 2011 → 2021
+
+# - weight_2021: p(2011 | 2021) = source contribution to each 2021 SA2
+# - weight_2011: p(2021 | 2011) = how each 2011 SA2 splits across 2021 SA2s
+
+c11_21_weighted <- c11_16 %>%
+  
+  # Join 2011→2016 and 2016→2021 tables via 2016 SA2 codes
+  inner_join(c16_21, by = "sa2_code_2016") %>%
+  
+  # Compute chained weight along each 2011→2016→2021 path
+  mutate(w_11_21 = w_11_16 * w_16_21) %>%
+  
+  # Aggregate weights for each unique 2011–2021 SA2 pair
+  group_by(sa2_code_2011, sa2_name_2011, sa2_code_2021, sa2_name_2021) %>%
+  summarise(weight_raw = sum(w_11_21, na.rm = TRUE), .groups = "drop") %>%
+  
+  # For each 2021 SA2, weights from all 2011 SA2s sum to 1
+  # p(2011 | 2021): contribution of 2011 SA2s to each 2021 SA2
+  group_by(sa2_code_2021, sa2_name_2021) %>%
+  mutate(weight_2021 = weight_raw / sum(weight_raw, na.rm = TRUE)) %>%
+  ungroup() %>%
+  
+  # For each 2011 SA2, weights to all 2021 SA2s sum to 1
+  # p(2021 | 2011): how each 2011 SA2 is split across 2021 SA2s
+  group_by(sa2_code_2011, sa2_name_2011) %>%
+  mutate(weight_2011 = weight_raw / sum(weight_raw, na.rm = TRUE)) %>%
+  ungroup()
+
+# ============================================================
+# Load NSW-wide 2021 SA2 list
+sa2_lga_lhd_nsw_2021 <- read_csv("sa2_lga_lhd_nsw_2021.csv", show_col_types = FALSE) %>%
+  mutate(
+    sa2_code_2021 = as.character(sa2_code_2021),
+    sa2_name_2021 = str_squish(as.character(sa2_name_2021))
+  )
+
+# Keep one record per SA2 and extract relevant columns
+map_lookup <- sa2_lga_lhd_nsw_2021 %>%
+  distinct(sa2_code_2021, .keep_all = TRUE)
+
+# Minimal NSW list for joins
+nsw_sa2_2021 <- map_lookup %>%
+  distinct(sa2_code_2021, sa2_name_2021)
+
+# Columns from the mapping table to append at the end of outputs
+extra_cols <- setdiff(names(map_lookup), c("sa2_code_2021", "sa2_name_2021"))
+
+# ============================================================
+# Filter correspondences to NSW SA2s only
+map_nsw_all <- c11_21_weighted %>%
+  semi_join(nsw_sa2_2021, by = "sa2_code_2021")
+
+# ============================================================
+# 2021-side view: how much of each 2021 SA2 came from each 2011 SA2?
+sa2_list_to_2021_core <- map_nsw_all %>%
+  arrange(sa2_name_2021, desc(weight_2021)) %>%
+  transmute(
+    sa2_code_2021, sa2_name_2021,
+    sa2_code_2011, sa2_name_2011,
+    weight_2021
+  )
+
+# Append ALL original mapping columns at the END
+sa2_map_list_to_2021 <- sa2_list_to_2021_core %>%
+  left_join(map_lookup %>% select(sa2_code_2021, dplyr::all_of(extra_cols)),
+            by = "sa2_code_2021") %>%
+  select(everything(), all_of(extra_cols))
+
+# ============================================================
+# 2011-side view: how each 2011 SA2 was split across the 2021 SA2s?
+sa2_map_list_from_2011_core <- map_nsw_all %>%
+  arrange(sa2_name_2011, desc(weight_2011)) %>%
+  transmute(
+    sa2_code_2011, sa2_name_2011,
+    sa2_code_2021, sa2_name_2021,
+    weight_2011
+  )
+
+# Append ALL original mapping columns
+sa2_map_list_from_2011 <- sa2_map_list_from_2011_core %>%
+  left_join(map_lookup %>% select(sa2_code_2021, all_of(extra_cols)),
+            by = "sa2_code_2021") %>%
+  select(everything(), all_of(extra_cols))
+```
+
+```{r}
+# write.csv(sa2_map_list_to_2021, "sa2_corres_to_2021.csv",  row.names = FALSE)
+# write.csv(sa2_map_list_from_2011, "sa2_corres_from_2011.csv",  row.names = FALSE)
+```
+
