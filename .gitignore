@@ -26,3 +26,4 @@ Thumbs.db
 *.tmp
 
 /.quarto/
+.Rproj.user/
