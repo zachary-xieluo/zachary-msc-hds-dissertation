@@ -311,7 +311,7 @@ ungroup()
 
 Moreover, I integrated the 2021 LGA and LHD mapping into the 2 SA2 correspondence types. This integration enabled the correspondence tables to link both across time (2011–2021) and across geographies (SA2 - LGA - LHD). I then saved two datasets (2021 view and 2011 view).
 
-Table 5 and Table 6 show examples of the 2011–2021 SA2 correspondence table from both perspectives. For instance, from the 2021 view, the 2021 SA2 “Box Hill – Nelson” was formed from two 2011 SA2s: 95% from “Rouse Hill - Beaumont Hills” and 44% from “Pitt Town - McGraths Hill”.
+Table 5 and Table 6 show examples of the 2011–2021 SA2 correspondence table from both perspectives. For instance, from the 2021 view, the 2021 SA2 “Box Hill – Nelson” was formed from two 2011 SA2s: 95% from “Rouse Hill - Beaumont Hills” and 5% from “Pitt Town - McGraths Hill”.
 
 [Table 5. Example of the 2011–2021 SA2 correspondence table (2021 view).]{style="font-size: 0.9rem;"}
 
@@ -320,7 +320,7 @@ Table 5 and Table 6 show examples of the 2011–2021 SA2 correspondence table fr
 | Box Hill – Nelson   | Rouse Hill – Beaumont Hills       | The Hills Shire  | Western Sydney   | 0.95        |
 | Box Hill – Nelson   | Pitt Town – McGraths Hill         | The Hills Shire  | Western Sydney   | 0.05        |
 <br>
-From the 2011 view, the 2011 SA2 “Blacktown (South)” was split into two SA2s in 2021, with 70% reallocated to “Blacktown – West”, and 30% reallocated to “Blacktown – South”.
+From the 2011 view, the 2011 SA2 “Blacktown (South)” was split into two SA2s in 2021, with 56% reallocated to “Blacktown – West”, and 44% reallocated to “Blacktown – South”.
 
 [Table 6. Example of the 2011–2021 SA2 correspondence table (2011 view).]{style="font-size: 0.9rem;"}
 
@@ -1365,9 +1365,9 @@ I also compiled all interactive figures into a separate dashboard page that user
 
 # Deployment
 
-The project was compiled and deployed as a Quarto website that contains three components: a scrollytelling article, an interactive dashboard, and a technical paper. All components are underpinned by a central GitHub codebase, which manages source code, data processing scripts, and site configuration to ensure reproducibility and transparency.
+The project was compiled and deployed as a [Quarto website](https://zachary-xieluo.github.io/zachary-msc-hds-dissertation/) that contains three components: a scrollytelling article, an interactive dashboard, and a technical paper. All components are underpinned by a central [GitHub codebase](https://github.com/zachary-xieluo/zachary-msc-hds-dissertation), which manages source code, data processing scripts, and site configuration to ensure reproducibility and transparency.
 
-The data analysis workflow was separated into a dedicated Git branch named “analysis”, which protects the main website from disruptions while maintaining the data processing system. This branch contains all datasets, analysis scripts and derived outputs used in developing the scrollytelling article.
+The data analysis workflow was separated into a dedicated Git branch named [“analysis”](https://github.com/zachary-xieluo/zachary-msc-hds-dissertation/tree/analysis), which protects the main website from disruptions while maintaining the data processing system. This branch contains all datasets, analysis scripts and derived outputs used in developing the scrollytelling article.
 
 # References
 

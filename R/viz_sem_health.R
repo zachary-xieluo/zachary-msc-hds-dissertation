@@ -181,7 +181,13 @@ caption_html <- '<div style="background:white; padding:6px 10px; font-size:12px;
 # 4) Leaflet map widget
 # =========================
 map_widget <- leaflet(biv_df_wgs84, width = "100%", height = "650px") |>
-  addProviderTiles("CartoDB.Positron") |>
+  addTiles(
+    urlTemplate = paste0(
+      "https://basemaps.cartocdn.com/rastertiles/light_all/",
+      "{z}/{x}/{y}.png?key=cb1_4dxc_1_eea96dfaa2fdfe3f4676c207"
+    ),
+    attribution = "© OpenStreetMap contributors © CARTO"
+  ) |>
   addPolygons(
     fillColor = ~fill_color, fillOpacity = 0.8,
     color = "#111827", weight = 0.5,

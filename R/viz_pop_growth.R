@@ -83,7 +83,13 @@ make_pop_growth_map <- function() {
     )
   
   leaflet(dat, width = "100%", height = "650px") %>%
-    addProviderTiles("CartoDB.Positron") %>%
+    addTiles(
+      urlTemplate = paste0(
+        "https://basemaps.cartocdn.com/rastertiles/light_all/",
+        "{z}/{x}/{y}.png?key=cb1_4dxc_1_eea96dfaa2fdfe3f4676c207"
+      ),
+      attribution = "© OpenStreetMap contributors © CARTO"
+    ) %>%
     addPolygons(
       fillColor   = ~fill_col,
       fillOpacity = 0.8,

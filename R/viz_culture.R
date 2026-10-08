@@ -122,7 +122,13 @@ caption_html <- '<div style="background:white; padding:6px 10px; font-size:12px;
 </div>'
 
 map_birth <- leaflet(map_cd_wslhd_2021, width = "100%", height = "650px") %>%
-  addProviderTiles("CartoDB.Positron") %>%
+  addTiles(
+    urlTemplate = paste0(
+      "https://basemaps.cartocdn.com/rastertiles/light_all/",
+      "{z}/{x}/{y}.png?key=cb1_4dxc_1_eea96dfaa2fdfe3f4676c207"
+    ),
+    attribution = "© OpenStreetMap contributors © CARTO"
+  ) %>%
   addPolygons(
     fillColor   = ~pal_overseas(prop_overseas),
     fillOpacity = 0.8,
@@ -154,7 +160,13 @@ map_birth <- leaflet(map_cd_wslhd_2021, width = "100%", height = "650px") %>%
   )
 
 map_lang <- leaflet(map_cd_wslhd_2021, width = "100%", height = "650px") %>%
-  addProviderTiles("CartoDB.Positron") %>%
+  addTiles(
+    urlTemplate = paste0(
+      "https://basemaps.cartocdn.com/rastertiles/light_all/",
+      "{z}/{x}/{y}.png?key=cb1_4dxc_1_eea96dfaa2fdfe3f4676c207"
+    ),
+    attribution = "© OpenStreetMap contributors © CARTO"
+  ) %>%
   addPolygons(
     fillColor   = ~pal_nonenglish(prop_nonenglish),
     fillOpacity = 0.8,
